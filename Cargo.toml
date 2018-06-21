@@ -1,0 +1,6 @@
+[package]
+name = "local-lfs"
+version = "0.1.0"
+authors = ["Jonathan Simmonds <jonathansimmonds@gmail.com>"]
+
+[dependencies]
