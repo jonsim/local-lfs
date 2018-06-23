@@ -70,5 +70,5 @@ fn main() {
 
     println!("{:?}", args);
 
-    server::start(port);
+    server::accept_connections(port);
 }
