@@ -1,3 +1,5 @@
+mod server;
+
 use std::env;
 use std::fmt;
 use std::process;
@@ -64,6 +66,9 @@ optional arguments:
 
 fn main() {
     let args = Args::parse_cmdline();
+    let port = args.port.unwrap_or(9090);
 
     println!("{:?}", args);
+
+    server::start(port);
 }
