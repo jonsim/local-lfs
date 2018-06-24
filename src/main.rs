@@ -1,4 +1,5 @@
 mod server;
+mod http;
 
 use std::env;
 use std::fmt;
