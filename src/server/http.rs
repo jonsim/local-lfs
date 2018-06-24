@@ -1,4 +1,32 @@
 use std::fmt;
+use std::error::Error;
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+struct ParseError {
+    description: &'static str,
+}
+impl ParseError {
+    fn new(description: &'static str) -> ParseError {
+        ParseError{ description }
+    }
+}
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("HTTP parsing error: {}", self.description))
+    }
+}
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        self.description
+    }
+}
+impl From<ParseIntError> for ParseError {
+    fn from(_: ParseIntError) -> ParseError {
+        ParseError::new("cannot parse integer")
+    }
+}
+
 
 #[derive(Debug)]
 struct Request {
@@ -38,18 +66,18 @@ struct HeaderField {
 }
 
 impl Version {
-    fn from(version_str: &str) -> Result<Version, &'static str> {
+    fn from(version_str: &str) -> Result<Version, ParseError> {
         // version = HTTP-M.m
         // Split into bytes.
         let version: Vec<u8> = version_str.bytes().collect();
         if version.len() != 8 {
-            return Err("Bad HTTP version");
+            return Err(ParseError::new("Bad version"));
         }
         // Parse major and minor versions.
         let major: u8 = version[5] - b'0';
         let minor: u8 = version[7] - b'0';
         if major > 9 || minor > 9 {
-            return Err("Bad HTTP version");
+            return Err(ParseError::new("Bad version"));
         }
 
         Ok(Version{ major, minor })
@@ -62,12 +90,12 @@ impl fmt::Display for Version {
 }
 
 impl RequestLine {
-    fn from(line: &str) -> Result<RequestLine, &'static str> {
+    fn from(line: &str) -> Result<RequestLine, ParseError> {
         // request-line = method SP request-target SP HTTP-version CRLF
         // Split by space.
         let parts: Vec<&str> = line.split(' ').collect();
         if parts.len() != 3 {
-            return Err("Bad HTTP request");
+            return Err(ParseError::new("Bad request"));
         }
         // Parse method, target and version.
         let method = String::from(parts[0]);
@@ -80,6 +108,23 @@ impl RequestLine {
 impl fmt::Display for RequestLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!("{} {} {}\r\n", self.method, self.target, self.version))
+    }
+}
+
+impl StatusLine {
+    fn from(line: &str) -> Result<StatusLine, ParseError> {
+        // status-line = HTTP-version SP status-code SP reason-phrase CRLF
+        // Split by space.
+        let parts: Vec<&str> = line.split(' ').collect();
+        if parts.len() != 3 {
+            return Err(ParseError::new("Bad request"));
+        }
+        // Parse method, target and version.
+        let version = Version::from(parts[0])?;
+        let status: u16 = parts[1].parse()?;
+        let reason = String::from(parts[2]);
+
+        Ok(StatusLine{ version, status, reason })
     }
 }
 
@@ -116,3 +161,4 @@ impl fmt::Display for HeaderField {
         f.pad(&format!("{}: {}", self.name, self.value))
     }
 }
+

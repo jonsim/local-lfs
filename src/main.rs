@@ -1,12 +1,11 @@
 mod server;
-mod http;
 
 use std::env;
 use std::fmt;
 use std::process;
 
 struct Args {
-    port: Option<i32>,
+    port: Option<u16>,
     store_path: Option<String>,
 }
 
@@ -46,7 +45,7 @@ optional arguments:
         let mut iter = env::args();
         iter.next();    // Skip arg0
 
-        let mut port: Option<i32> = None;
+        let mut port: Option<u16> = None;
         let mut store_path: Option<String> = None;
         while let Some(arg) = iter.next() {
             match arg.as_ref() {
