@@ -7,8 +7,8 @@ struct ParseError {
     description: &'static str,
 }
 impl ParseError {
-    fn new(description: &'static str) -> ParseError {
-        ParseError{ description }
+    fn err<T>(description: &'static str) -> Result<T, ParseError> {
+        Err(ParseError{ description })
     }
 }
 impl fmt::Display for ParseError {
@@ -23,15 +23,15 @@ impl Error for ParseError {
 }
 impl From<ParseIntError> for ParseError {
     fn from(_: ParseIntError) -> ParseError {
-        ParseError::new("cannot parse integer")
+        ParseError{ description: "cannot parse integer" }
     }
 }
 
 
 #[derive(Debug)]
-struct Request {
-    line: RequestLine,
-    headers: Vec<HeaderField>,
+struct Request<'a> {
+    line: RequestLine<'a>,
+    headers: Vec<HeaderField<'a>>,
 }
 
 #[derive(Debug)]
@@ -46,23 +46,23 @@ struct Version {
 }
 
 #[derive(Debug)]
-struct RequestLine {
+struct RequestLine<'a> {
     version: Version,
-    method: String,
-    target: String,
+    method: &'a str,
+    target: &'a str,
 }
 
 #[derive(Debug)]
-struct StatusLine {
+struct StatusLine<'a> {
     version: Version,
     status: u16,
-    reason: String,
+    reason: &'a str,
 }
 
 #[derive(Debug)]
-struct HeaderField {
-    name: String,
-    value: String,
+struct HeaderField<'a> {
+    name:  &'a str,
+    value: &'a str,
 }
 
 impl Version {
@@ -71,13 +71,13 @@ impl Version {
         // Split into bytes.
         let version: Vec<u8> = version_str.bytes().collect();
         if version.len() != 8 {
-            return Err(ParseError::new("Bad version"));
+            return ParseError::err("Bad version");
         }
         // Parse major and minor versions.
         let major: u8 = version[5] - b'0';
         let minor: u8 = version[7] - b'0';
         if major > 9 || minor > 9 {
-            return Err(ParseError::new("Bad version"));
+            return ParseError::err("Bad version");
         }
 
         Ok(Version{ major, minor })
@@ -89,47 +89,47 @@ impl fmt::Display for Version {
     }
 }
 
-impl RequestLine {
-    fn from(line: &str) -> Result<RequestLine, ParseError> {
+impl<'a> RequestLine<'a> {
+    fn from(line: &'a str) -> Result<RequestLine<'a>, ParseError> {
         // request-line = method SP request-target SP HTTP-version CRLF
         // Split by space.
         let parts: Vec<&str> = line.split(' ').collect();
         if parts.len() != 3 {
-            return Err(ParseError::new("Bad request"));
+            return ParseError::err("Bad request");
         }
         // Parse method, target and version.
-        let method = String::from(parts[0]);
-        let target = String::from(parts[1]);
+        let method = parts[0];
+        let target = parts[1];
         let version = Version::from(parts[2])?;
 
         Ok(RequestLine{ version, method, target })
     }
 }
-impl fmt::Display for RequestLine {
+impl<'a> fmt::Display for RequestLine<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!("{} {} {}\r\n", self.method, self.target, self.version))
     }
 }
 
-impl StatusLine {
-    fn from(line: &str) -> Result<StatusLine, ParseError> {
+impl<'a> StatusLine<'a> {
+    fn from(line: &'a str) -> Result<StatusLine<'a>, ParseError> {
         // status-line = HTTP-version SP status-code SP reason-phrase CRLF
         // Split by space.
         let parts: Vec<&str> = line.split(' ').collect();
         if parts.len() != 3 {
-            return Err(ParseError::new("Bad request"));
+            return ParseError::err("Bad request");
         }
         // Parse method, target and version.
         let version = Version::from(parts[0])?;
         let status: u16 = parts[1].parse()?;
-        let reason = String::from(parts[2]);
+        let reason = parts[2];
 
         Ok(StatusLine{ version, status, reason })
     }
 }
 
-impl HeaderField {
-    fn from(line: &str) -> Result<HeaderField, &'static str> {
+impl<'a> HeaderField<'a> {
+    fn from(line: &'a str) -> Result<HeaderField<'a>, ParseError> {
         // header-field   = field-name ":" OWS field-value OWS
         // field-value    = *( field-content / obs-fold )
         // field-content  = field-vchar [ 1*( SP / HTAB ) field-vchar ]
@@ -139,24 +139,24 @@ impl HeaderField {
         // Split by the first colon separator.
         let sep = line.find(':');
         if sep.is_none() {
-            return Err("Bad HTTP header");
+            return ParseError::err("Bad HTTP header");
         }
         // Parse name. Names must not contain whitespace.
-        let name = String::from(&line[..sep.unwrap()]);
+        let name = &line[..sep.unwrap()];
         if name.find(char::is_whitespace).is_some() {
-            return Err("Bad HTTP header");
+            return ParseError::err("Bad HTTP header");
         }
         // Parse value. Values must have leading/trailing whitespace removed.
         // Line folding unsupported.
-        let value = String::from(line[sep.unwrap()+1..].trim());
+        let value = line[sep.unwrap()+1..].trim();
         if value.find('\n').is_some() {
-            return Err("Bad HTTP header");
+            return ParseError::err("Bad HTTP header");
         }
 
         Ok(HeaderField{ name, value })
     }
 }
-impl fmt::Display for HeaderField {
+impl<'a> fmt::Display for HeaderField<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!("{}: {}", self.name, self.value))
     }
