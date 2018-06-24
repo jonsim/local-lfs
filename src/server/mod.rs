@@ -31,10 +31,13 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
 
     let reader = BufReader::new(stream);
 
-    println!("Data:");
-    for line in reader.lines() {
-        println!("  {}", line?);
-    }
+    // println!("Data:");
+    // for line in reader.lines() {
+    //     println!("  {}", line?);
+    // }
+    let line_iter = &mut reader.lines();
+    let request = http::Request::parse(line_iter);
+    println!("First Request:\n  {:?}", request);
 
     Ok(())
 }

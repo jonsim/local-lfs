@@ -1,14 +1,18 @@
 use std::fmt;
-use std::error::Error;
+use std::error::Error as StdError;
+use std::io::Error as IoError;
 use std::num::ParseIntError;
 
 #[derive(Debug)]
-struct ParseError {
+pub struct ParseError {
     description: &'static str,
 }
 impl ParseError {
+    fn new(description: &'static str) -> ParseError {
+        ParseError{ description }
+    }
     fn err<T>(description: &'static str) -> Result<T, ParseError> {
-        Err(ParseError{ description })
+        Err(ParseError::new(description))
     }
 }
 impl fmt::Display for ParseError {
@@ -16,21 +20,26 @@ impl fmt::Display for ParseError {
         f.pad(&format!("HTTP parsing error: {}", self.description))
     }
 }
-impl Error for ParseError {
+impl StdError for ParseError {
     fn description(&self) -> &str {
         self.description
     }
 }
 impl From<ParseIntError> for ParseError {
     fn from(_: ParseIntError) -> ParseError {
-        ParseError{ description: "cannot parse integer" }
+        ParseError::new("cannot parse integer")
+    }
+}
+impl From<IoError> for ParseError {
+    fn from(_: IoError) -> ParseError {
+        ParseError::new("failed to read from connection")
     }
 }
 
 
 #[derive(Debug)]
-struct Request<'a> {
-    line: RequestLine<'a>,
+pub struct Request<'a> {
+    request_line: RequestLine<'a>,
     headers: Vec<HeaderField<'a>>,
 }
 
@@ -63,6 +72,29 @@ struct StatusLine<'a> {
 struct HeaderField<'a> {
     name:  &'a str,
     value: &'a str,
+}
+
+impl<'a> Request<'a> {
+    pub fn parse<Iter>(lines: &'a mut Iter) -> Result<Request<'a>, ParseError>
+    where
+        Iter: Iterator<Item = Result<String, IoError>>,
+    {
+        let first_line = lines.next()
+            .ok_or(ParseError::new("Unexpected end of stream"))??;
+        let request_line = RequestLine::from(first_line.as_str())?;
+        let mut headers: Vec<HeaderField> = Vec::new();
+        loop {
+            let line = lines.next()
+                .ok_or(ParseError::new("Unexpected end of stream"))??;
+            if line.is_empty() {
+                break;  // header finished.
+            }
+            let header = HeaderField::from(line.as_str())?;
+            headers.push(header);
+        }
+
+        Ok(Request{ request_line, headers })
+    }
 }
 
 impl Version {
@@ -125,6 +157,11 @@ impl<'a> StatusLine<'a> {
         let reason = parts[2];
 
         Ok(StatusLine{ version, status, reason })
+    }
+}
+impl<'a> fmt::Display for StatusLine<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("{} {} {}\r\n", self.version, self.status, self.reason))
     }
 }
 
