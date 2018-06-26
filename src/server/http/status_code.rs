@@ -5,11 +5,12 @@ use self::num_traits::ToPrimitive;
 
 #[derive(Debug, FromPrimitive, ToPrimitive)]
 pub enum StatusCode {
+    // 100: Informational.
     Continue                    = 100,
     SwitchingProtocols          = 101,
     Processing                  = 102,
     EarlyHints                  = 103,
-
+    // 200: Success.
     Ok                          = 200,
     Created                     = 201,
     Accepted                    = 202,
@@ -20,7 +21,7 @@ pub enum StatusCode {
     MultiStatus                 = 207,
     AlreadyReported             = 208,
     IMUsed                      = 226,
-
+    // 300: Redirection.
     MultipleChoices             = 300,
     MovedPermanently            = 301,
     Found                       = 302,
@@ -30,7 +31,7 @@ pub enum StatusCode {
     SwitchProxy                 = 306,
     TemporaryRedirect           = 307,
     PermanentRedirect           = 308,
-
+    // 400: Client errors.
     BadRequest                  = 400,
     Unauthorized                = 401,
     PaymentRequired             = 402,
@@ -59,7 +60,7 @@ pub enum StatusCode {
     TooManyRequests             = 429,
     RequestHeaderFieldsTooLarge = 431,
     UnavailableForLegalReasons  = 451,
-
+    // 500: Server errors.
     InternalServerError         = 500,
     NotImplemented              = 501,
     BadGateway                  = 502,

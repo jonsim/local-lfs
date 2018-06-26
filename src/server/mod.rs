@@ -36,8 +36,9 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     //     println!("  {}", line?);
     // }
     let line_iter = &mut reader.lines();
-    let request = http::Request::parse(line_iter);
+    let request = http::RequestHeader::parse(line_iter);
     println!("First Request:\n  {:?}", request);
+    // stream.write(http::Response::)
 
     Ok(())
 }

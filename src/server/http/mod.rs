@@ -42,14 +42,14 @@ impl From<IoError> for ParseError {
 
 
 #[derive(Debug)]
-pub struct Request {
-    request_line: RequestLine,
+pub struct RequestHeader {
+    line: RequestHeaderStatusLine,
     headers: Vec<HeaderField>,
 }
 
 #[derive(Debug)]
-struct Response {
-    status_line: StatusLine,
+struct ResponseHeader {
+    line: ResponseHeaderStatusLine,
     headers: Vec<HeaderField>,
 }
 
@@ -73,14 +73,14 @@ pub enum Method {
 }
 
 #[derive(Debug)]
-struct RequestLine {
+struct RequestHeaderStatusLine {
     version: Version,
     method: Method,
     target: String,
 }
 
 #[derive(Debug)]
-struct StatusLine {
+struct ResponseHeaderStatusLine {
     version: Version,
     status: StatusCode,
 }
@@ -91,37 +91,53 @@ struct HeaderField {
     value: String,
 }
 
-impl<'a> Request {
-    pub fn parse<Iter>(lines: &'a mut Iter) -> Result<Request, ParseError>
+#[derive(Debug)]
+struct Body {
+    content: String,
+}
+
+impl<'a> RequestHeader {
+    pub fn parse<Iter>(lines: &'a mut Iter) -> Result<RequestHeader, ParseError>
     where
         Iter: Iterator<Item = Result<String, IoError>>,
     {
         let first_line = lines.next()
             .ok_or(ParseError::new("Unexpected end of stream"))??;
-        let request_line = RequestLine::from(first_line)?;
+        let line = RequestHeaderStatusLine::from(first_line)?;
         let mut headers = Vec::new();
         loop {
-            let line = lines.next()
+            let iline = lines.next()
                 .ok_or(ParseError::new("Unexpected end of stream"))??;
-            if line.is_empty() {
+            if iline.is_empty() {
                 break;  // header finished.
             }
-            let header = HeaderField::from(line)?;
+            let header = HeaderField::from(iline)?;
             headers.push(header);
         }
 
-        Ok(Request{ request_line, headers })
+        Ok(RequestHeader{ line, headers })
     }
 
     pub fn version(&self) -> &Version {
-        &self.request_line.version
+        &self.line.version
     }
 
+    pub fn method(&self) -> &Method {
+        &self.line.method
+    }
+
+    pub fn target(&self) -> &str {
+        &self.line.target
+    }
 
 }
 
-impl Response {
-
+impl ResponseHeader {
+    pub fn build(status: StatusCode) -> ResponseHeader {
+        let line = ResponseHeaderStatusLine::new(status);
+        let headers = Vec::new();
+        ResponseHeader{ line, headers }
+    }
 }
 
 impl Version {
@@ -170,8 +186,8 @@ impl fmt::Display for Method {
     }
 }
 
-impl RequestLine {
-    fn from(line: String) -> Result<RequestLine, ParseError> {
+impl RequestHeaderStatusLine {
+    fn from(line: String) -> Result<RequestHeaderStatusLine, ParseError> {
         // request-line = method SP request-target SP HTTP-version CRLF
         // Split by space.
         let parts: Vec<&str> = line.split(' ').collect();
@@ -183,17 +199,22 @@ impl RequestLine {
         let target = String::from(parts[1]);
         let version = Version::from(parts[2])?;
 
-        Ok(RequestLine{ version, method, target })
+        Ok(RequestHeaderStatusLine{ version, method, target })
     }
 }
-impl fmt::Display for RequestLine {
+impl fmt::Display for RequestHeaderStatusLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!("{} {} {}\r\n", self.method, self.target, self.version))
     }
 }
 
-impl StatusLine {
-    fn from(line: String) -> Result<StatusLine, ParseError> {
+impl ResponseHeaderStatusLine {
+    fn new(status: StatusCode) -> ResponseHeaderStatusLine {
+        let version = Version{ major: 1, minor: 1 };
+        ResponseHeaderStatusLine{ version, status }
+    }
+
+    fn from(line: String) -> Result<ResponseHeaderStatusLine, ParseError> {
         // status-line = HTTP-version SP status-code SP reason-phrase CRLF
         // Split by space.
         let parts: Vec<&str> = line.split(' ').collect();
@@ -205,10 +226,10 @@ impl StatusLine {
         let status: u16 = parts[1].parse()?;
         let status = StatusCode::from(status).ok_or(ParseError::new("Bad status"))?;
 
-        Ok(StatusLine{ version, status })
+        Ok(ResponseHeaderStatusLine{ version, status })
     }
 }
-impl fmt::Display for StatusLine {
+impl fmt::Display for ResponseHeaderStatusLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!("{} {} {}\r\n", self.version, self.status.code(),
                        self.status.phrase()))
