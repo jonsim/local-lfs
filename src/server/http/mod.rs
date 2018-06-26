@@ -1,7 +1,11 @@
+mod status_code;
+
 use std::fmt;
 use std::error::Error as StdError;
 use std::io::Error as IoError;
 use std::num::ParseIntError;
+use self::status_code::StatusCode;
+
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -45,27 +49,40 @@ pub struct Request {
 
 #[derive(Debug)]
 struct Response {
-
+    status_line: StatusLine,
+    headers: Vec<HeaderField>,
 }
 
 #[derive(Debug)]
-struct Version {
+pub struct Version {
     major: u8,
     minor: u8,
 }
 
 #[derive(Debug)]
+pub enum Method {
+    GET,
+    HEAD,
+    POST,
+    PUT,
+    DELETE,
+    TRACE,
+    OPTIONS,
+    CONNECT,
+    PATCH,
+}
+
+#[derive(Debug)]
 struct RequestLine {
     version: Version,
-    method: String,
+    method: Method,
     target: String,
 }
 
 #[derive(Debug)]
 struct StatusLine {
     version: Version,
-    status: u16,
-    reason: String,
+    status: StatusCode,
 }
 
 #[derive(Debug)]
@@ -82,7 +99,7 @@ impl<'a> Request {
         let first_line = lines.next()
             .ok_or(ParseError::new("Unexpected end of stream"))??;
         let request_line = RequestLine::from(first_line)?;
-        let mut headers: Vec<HeaderField> = Vec::new();
+        let mut headers = Vec::new();
         loop {
             let line = lines.next()
                 .ok_or(ParseError::new("Unexpected end of stream"))??;
@@ -95,10 +112,20 @@ impl<'a> Request {
 
         Ok(Request{ request_line, headers })
     }
+
+    pub fn version(&self) -> &Version {
+        &self.request_line.version
+    }
+
+
+}
+
+impl Response {
+
 }
 
 impl Version {
-    fn from(version_str: String) -> Result<Version, ParseError> {
+    fn from(version_str: &str) -> Result<Version, ParseError> {
         // version = HTTP-M.m
         // Split into bytes.
         let version: Vec<u8> = version_str.bytes().collect();
@@ -121,6 +148,28 @@ impl fmt::Display for Version {
     }
 }
 
+impl Method {
+    fn from(version_str: &str) -> Result<Method, ParseError> {
+        match version_str {
+            "GET"     => Ok(Method::GET),
+            "HEAD"    => Ok(Method::HEAD),
+            "POST"    => Ok(Method::POST),
+            "PUT"     => Ok(Method::PUT),
+            "DELETE"  => Ok(Method::DELETE),
+            "TRACE"   => Ok(Method::TRACE),
+            "OPTIONS" => Ok(Method::OPTIONS),
+            "CONNECT" => Ok(Method::CONNECT),
+            "PATCH"   => Ok(Method::PATCH),
+            _ => ParseError::err("Invalid method"),
+        }
+    }
+}
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 impl RequestLine {
     fn from(line: String) -> Result<RequestLine, ParseError> {
         // request-line = method SP request-target SP HTTP-version CRLF
@@ -130,9 +179,9 @@ impl RequestLine {
             return ParseError::err("Bad request");
         }
         // Parse method, target and version.
-        let method = String::from(parts[0]);
+        let method = Method::from(parts[0])?;
         let target = String::from(parts[1]);
-        let version = Version::from(String::from(parts[2]))?;
+        let version = Version::from(parts[2])?;
 
         Ok(RequestLine{ version, method, target })
     }
@@ -152,16 +201,17 @@ impl StatusLine {
             return ParseError::err("Bad request");
         }
         // Parse method, target and version.
-        let version = Version::from(String::from(parts[0]))?;
+        let version = Version::from(parts[0])?;
         let status: u16 = parts[1].parse()?;
-        let reason = String::from(parts[2]);
+        let status = StatusCode::from(status).ok_or(ParseError::new("Bad status"))?;
 
-        Ok(StatusLine{ version, status, reason })
+        Ok(StatusLine{ version, status })
     }
 }
 impl fmt::Display for StatusLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("{} {} {}\r\n", self.version, self.status, self.reason))
+        f.pad(&format!("{} {} {}\r\n", self.version, self.status.code(),
+                       self.status.phrase()))
     }
 }
 
