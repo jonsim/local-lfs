@@ -1,4 +1,4 @@
-mod status_code;
+pub mod status_code;
 
 use std::fmt;
 use std::error::Error as StdError;
@@ -96,6 +96,12 @@ struct Body {
     content: String,
 }
 
+#[derive(Debug)]
+pub struct Response {
+    header: ResponseHeader,
+    body: Body,
+}
+
 impl<'a> RequestHeader {
     pub fn parse<Iter>(lines: &'a mut Iter) -> Result<RequestHeader, ParseError>
     where
@@ -132,11 +138,47 @@ impl<'a> RequestHeader {
 
 }
 
+impl Body {
+    pub fn content_length(&self) -> usize {
+        self.content.len()
+    }
+}
+impl fmt::Display for Body {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("{}", self.content))
+    }
+}
+
+impl Response {
+    pub fn build(status: StatusCode, content: String) -> Response {
+        let body = Body { content };
+        let content_length = body.content_length();
+        let mut header = ResponseHeader::build(status);
+        header.headers.push(HeaderField::ContentLength(content_length));
+        Response{ header, body }
+    }
+}
+impl fmt::Display for Response {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("{}\r\n{}", self.header, self.body))
+    }
+}
+
 impl ResponseHeader {
     pub fn build(status: StatusCode) -> ResponseHeader {
         let line = ResponseHeaderStatusLine::new(status);
         let headers = Vec::new();
         ResponseHeader{ line, headers }
+    }
+}
+impl fmt::Display for ResponseHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut out = String::new();
+        out.push_str(&format!("{}\r\n", self.line));
+        for boogle in &self.headers {
+            out.push_str(&format!("{}\r\n", boogle));
+        }
+        f.pad(&out)
     }
 }
 
@@ -160,7 +202,7 @@ impl Version {
 }
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("HTTP-{}.{}", self.major, self.minor))
+        f.pad(&format!("HTTP/{}.{}", self.major, self.minor))
     }
 }
 
@@ -204,7 +246,7 @@ impl RequestHeaderStatusLine {
 }
 impl fmt::Display for RequestHeaderStatusLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("{} {} {}\r\n", self.method, self.target, self.version))
+        f.pad(&format!("{} {} {}", self.method, self.target, self.version))
     }
 }
 
@@ -231,12 +273,22 @@ impl ResponseHeaderStatusLine {
 }
 impl fmt::Display for ResponseHeaderStatusLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("{} {} {}\r\n", self.version, self.status.code(),
+        f.pad(&format!("{} {} {}", self.version, self.status.code(),
                        self.status.phrase()))
     }
 }
 
 impl HeaderField {
+    fn new(name: String, value: String) -> HeaderField {
+        HeaderField{ name, value }
+    }
+
+    fn ContentLength(length: usize) -> HeaderField {
+        let name = String::from("Content-Length");
+        let value = format!("{}", length);
+        HeaderField{ name, value }
+    }
+
     fn from(line: String) -> Result<HeaderField, ParseError> {
         // header-field   = field-name ":" OWS field-value OWS
         // field-value    = *( field-content / obs-fold )

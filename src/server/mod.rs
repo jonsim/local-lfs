@@ -2,8 +2,9 @@ mod http;
 
 use std::io;
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 use std::net::{TcpListener, TcpStream, SocketAddr};
+use self::http::status_code::StatusCode;
 
 pub fn accept_connections(port: u16) {
     let listen_addr = SocketAddr::from(([127,0,0,1], port));
@@ -29,16 +30,21 @@ pub fn accept_connections(port: u16) {
 fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     println!("New client: {}", addr);
 
-    let reader = BufReader::new(stream);
+    let reader = BufReader::new(&stream);
+    let mut writer = BufWriter::new(&stream);
 
     // println!("Data:");
     // for line in reader.lines() {
     //     println!("  {}", line?);
     // }
     let line_iter = &mut reader.lines();
-    let request = http::RequestHeader::parse(line_iter);
+    let request = http::RequestHeader::parse(line_iter).expect("couldn't parse");
     println!("First Request:\n  {:?}", request);
-    // stream.write(http::Response::)
+    let response = http::Response::build(StatusCode::Ok,
+            String::from("hello world"));
+    println!("First Response:\n  {:?}", response);
+    let response = format!("{}", response);
+    writer.write(response.as_bytes())?;
 
     Ok(())
 }
