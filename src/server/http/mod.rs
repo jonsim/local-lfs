@@ -135,8 +135,18 @@ impl<'a> RequestHeader {
     pub fn target(&self) -> &str {
         &self.line.target
     }
-
 }
+impl fmt::Display for RequestHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut out = String::new();
+        out.push_str(&format!("{}\r\n", self.line));
+        for boogle in &self.headers {
+            out.push_str(&format!("{}\r\n", boogle));
+        }
+        f.pad(&out)
+    }
+}
+
 
 impl Body {
     pub fn content_length(&self) -> usize {
