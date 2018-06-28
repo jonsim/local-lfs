@@ -1,4 +1,8 @@
 # local-lfs
+
+[![Build Status](https://travis-ci.org/jonsim/local-lfs.svg?branch=master)](https://travis-ci.org/jonsim/local-lfs)
+[![codecov](https://codecov.io/gh/jonsim/local-lfs/branch/master/graph/badge.svg)](https://codecov.io/gh/jonsim/local-lfs)
+
 An implementation of a [git-lfs](https://git-lfs.github.com/) server which can
 be hosted locally and is designed to hold its file objects in a highly
 compressed form suitable for cloud storage platforms
