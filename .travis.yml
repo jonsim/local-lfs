@@ -1,4 +1,6 @@
 language: rust
+# Sudo only needed to workaround travis-ci/travis-ci#9061
+sudo: required
 
 cache:
   - apt: true
