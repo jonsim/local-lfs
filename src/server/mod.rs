@@ -1,5 +1,3 @@
-extern crate test;
-
 mod http;
 
 use std::cmp;
@@ -56,18 +54,48 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     Ok(())
 }
 
-pub fn my_parse(request: &'static str) -> http::RequestHeader {
-    let request = StringReader::new(request);
-    http::RequestHeader::parse(&mut request.lines()).expect("couldn't parse")
-}
 
+#[cfg(test)]
 mod tests {
     use super::*;
-    use self::test::Bencher;
 
-    #[bench]
-    fn bench_my_parse(b: &mut Bencher) {
-        let request =
+    struct StringReader {
+        content: String,
+        pos: usize,
+    }
+    impl StringReader {
+        pub fn new(content: &'static str) -> StringReader {
+            StringReader{ content: String::from(content), pos: 0 }
+        }
+    }
+    impl Read for StringReader {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
+            let len = cmp::min(buf.len(), self.content.len() - self.pos);
+            let end = self.pos + len;
+            buf.clone_from_slice(&self.content.as_bytes()[self.pos..end]);
+            self.pos += len;
+            Ok(len)
+        }
+    }
+    impl BufRead for StringReader {
+        fn fill_buf(&mut self) -> IoResult<&[u8]> {
+            Ok(&self.content.as_bytes()[self.pos..])
+        }
+
+        fn consume(&mut self, amt: usize) {
+            self.pos += amt;
+        }
+    }
+
+
+    fn parse(request: &'static str) -> http::RequestHeader {
+        let request = StringReader::new(request);
+        http::RequestHeader::parse(&mut request.lines()).unwrap()
+    }
+
+    #[test]
+    fn full_parse() {
+        let request = parse(
             "GET / HTTP/1.1\r\n\
             Host: www.foo.bar\r\n\
             User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0\r\n\
@@ -77,35 +105,11 @@ mod tests {
             Connection: keep-alive\r\n\
             Upgrade-Insecure-Requests: 1\r\n\
             Cache-Control: max-age=0\r\n\
-            \r\n";
-        b.iter(|| my_parse(request));
-    }
-}
-
-struct StringReader {
-    content: String,
-    pos: usize,
-}
-impl StringReader {
-    pub fn new(content: &'static str) -> StringReader {
-        StringReader{ content: String::from(content), pos: 0 }
-    }
-}
-impl Read for StringReader {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-        let len = cmp::min(buf.len(), self.content.len() - self.pos);
-        let end = self.pos + len;
-        buf.clone_from_slice(&self.content.as_bytes()[self.pos..end]);
-        self.pos += len;
-        Ok(len)
-    }
-}
-impl BufRead for StringReader {
-    fn fill_buf(&mut self) -> IoResult<&[u8]> {
-        Ok(&self.content.as_bytes()[self.pos..])
-    }
-
-    fn consume(&mut self, amt: usize) {
-        self.pos += amt;
+            \r\n"
+        );
+        assert_eq!(http::Method::GET, *request.method());
+        assert_eq!("/",   request.target());
+        assert_eq!(1, request.version().major());
+        assert_eq!(1, request.version().minor());
     }
 }

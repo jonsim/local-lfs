@@ -53,13 +53,13 @@ struct ResponseHeader {
     headers: Vec<HeaderField>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Version {
     major: u8,
     minor: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Method {
     GET,
     HEAD,
@@ -209,6 +209,14 @@ impl Version {
 
         Ok(Version{ major, minor })
     }
+
+    pub fn major(&self) -> u8 {
+        self.major
+    }
+
+    pub fn minor(&self) -> u8 {
+        self.minor
+    }
 }
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -331,4 +339,3 @@ impl fmt::Display for HeaderField {
         f.pad(&format!("{}: {}", self.name, self.value))
     }
 }
-

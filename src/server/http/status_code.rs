@@ -3,7 +3,7 @@ extern crate num_traits;
 use self::num_traits::FromPrimitive;
 use self::num_traits::ToPrimitive;
 
-#[derive(Debug, FromPrimitive, ToPrimitive)]
+#[derive(Debug, FromPrimitive, ToPrimitive, PartialEq)]
 pub enum StatusCode {
     // 100: Informational.
     Continue                    = 100,
