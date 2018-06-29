@@ -10,7 +10,7 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn build(status: StatusCode) -> Response {
+    pub fn from(status: StatusCode) -> Response {
         let line = ResponseStatus::new(status);
         let headers = Vec::new();
         Response{ line, headers }

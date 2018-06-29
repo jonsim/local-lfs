@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::Error as IoError;
+use std::io::BufRead;
 use super::Error;
 use super::Field;
 use super::Method;
@@ -12,11 +12,10 @@ pub struct Request {
     fields: Vec<Field>,
 }
 
-impl<'a> Request {
-    pub fn parse<Iter>(lines: &'a mut Iter) -> Result<Request, Error>
-    where
-        Iter: Iterator<Item = Result<String, IoError>>,
+impl Request {
+    pub fn parse<B: BufRead>(reader: &mut B) -> Result<Request, Error>
     {
+        let mut lines = reader.lines();
         let first_line = lines.next()
             .ok_or(Error::new("Unexpected end of stream"))??;
         let line = RequestStatus::from(first_line)?;
@@ -27,8 +26,8 @@ impl<'a> Request {
             if iline.is_empty() {
                 break;  // header finished.
             }
-            let header = Field::from(iline)?;
-            fields.push(header);
+            let field = Field::from(iline)?;
+            fields.push(field);
         }
 
         Ok(Request{ line, fields })

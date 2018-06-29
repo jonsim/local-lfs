@@ -33,19 +33,15 @@ pub fn accept_connections(port: u16) {
 fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     println!("New client: {}", addr);
 
-    let reader = BufReader::new(&stream);
+    let mut reader = BufReader::new(&stream);
     let mut writer = BufWriter::new(&stream);
 
-    // println!("Data:");
-    // for line in reader.lines() {
-    //     println!("  {}", line?);
-    // }
-    let line_iter = &mut reader.lines();
-    let request = http::Request::parse(line_iter).expect("couldn't parse");
-    println!("First Request:\n  {:?}", request);
-    println!("\n{}\n", request);
+    let request = http::Request::parse(&mut reader).expect("couldn't parse");
+    println!("First Request:\n  {}", request);
+    let body = http::Body::parse(&mut reader, 0).expect("couldn't parse");
+    println!("First Body:\n  {}", body);
 
-    let response_head = http::Response::build(StatusCode::Ok);
+    let response_head = http::Response::from(StatusCode::Ok);
     let response_body = http::Body::from(String::from("hello world"));
     // println!("First Response:\n  {:?}", response);
     let response = format!("{}\r\n{}", response_head, response_body);
@@ -90,8 +86,8 @@ mod tests {
 
 
     fn parse(request: &'static str) -> http::Request {
-        let request = StringReader::new(request);
-        http::Request::parse(&mut request.lines()).unwrap()
+        let mut request = StringReader::new(request);
+        http::Request::parse(&mut request).unwrap()
     }
 
     #[test]

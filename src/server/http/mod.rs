@@ -1,6 +1,3 @@
-// pub mod status_code;
-// use std::fmt;
-// use self::status_code::StatusCode;
 mod error;
 mod method;
 mod version;
