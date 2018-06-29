@@ -7,7 +7,7 @@ use std::io::Result as IoResult;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, BufRead};
 use std::net::{TcpListener, TcpStream, SocketAddr};
-use self::http::status_code::StatusCode;
+use self::http::StatusCode;
 
 pub fn accept_connections(port: u16) {
     let listen_addr = SocketAddr::from(([127,0,0,1], port));
@@ -41,14 +41,14 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     //     println!("  {}", line?);
     // }
     let line_iter = &mut reader.lines();
-    let request = http::RequestHeader::parse(line_iter).expect("couldn't parse");
+    let request = http::Request::parse(line_iter).expect("couldn't parse");
     println!("First Request:\n  {:?}", request);
     println!("\n{}\n", request);
 
-    let response = http::Response::build(StatusCode::Ok,
-            String::from("hello world"));
-    println!("First Response:\n  {:?}", response);
-    let response = format!("{}", response);
+    let response_head = http::Response::build(StatusCode::Ok);
+    let response_body = http::Body::from(String::from("hello world"));
+    // println!("First Response:\n  {:?}", response);
+    let response = format!("{}\r\n{}", response_head, response_body);
     writer.write(response.as_bytes())?;
 
     Ok(())
@@ -57,6 +57,7 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    // TODO: These tests should be in http/mod.rs
     use super::*;
 
     struct StringReader {
@@ -88,9 +89,9 @@ mod tests {
     }
 
 
-    fn parse(request: &'static str) -> http::RequestHeader {
+    fn parse(request: &'static str) -> http::Request {
         let request = StringReader::new(request);
-        http::RequestHeader::parse(&mut request.lines()).unwrap()
+        http::Request::parse(&mut request.lines()).unwrap()
     }
 
     #[test]
