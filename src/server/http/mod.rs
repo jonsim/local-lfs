@@ -69,27 +69,40 @@ impl MessageBuilder {
 }
 
 
-/*
-#[derive(Debug)]
-pub struct Response {
-    header: ResponseHeader,
-    body: Body,
-}
+#[cfg(test)]
+mod tests {
+    use std::cmp;
+    use std::io::{Read, BufRead};
+    use std::io::Result as IoResult;
 
+    pub struct StringReader {
+        content: String,
+        pos: usize,
+    }
 
+    impl StringReader {
+        pub fn new<'a>(content: &'a str) -> StringReader {
+            StringReader{ content: String::from(content), pos: 0 }
+        }
+    }
 
-impl Response {
-    pub fn build(status: StatusCode, content: String) -> Response {
-        let body = Body { content };
-        let content_length = body.content_length();
-        let mut header = ResponseHeader::build(status);
-        header.headers.push(HeaderField::ContentLength(content_length));
-        Response{ header, body }
+    impl Read for StringReader {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
+            let len = cmp::min(buf.len(), self.content.len() - self.pos);
+            let end = self.pos + len;
+            &buf[..len].clone_from_slice(&self.content.as_bytes()[self.pos..end]);
+            self.pos += len;
+            Ok(len)
+        }
+    }
+
+    impl BufRead for StringReader {
+        fn fill_buf(&mut self) -> IoResult<&[u8]> {
+            Ok(&self.content.as_bytes()[self.pos..])
+        }
+
+        fn consume(&mut self, amt: usize) {
+            self.pos += amt;
+        }
     }
 }
-impl fmt::Display for Response {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("{}\r\n{}", self.header, self.body))
-    }
-}
-*/
