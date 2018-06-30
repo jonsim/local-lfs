@@ -13,6 +13,10 @@ pub struct Request {
 }
 
 impl Request {
+    pub fn new(line: RequestStatus, fields: Vec<Field>) -> Request {
+        Request{ line, fields }
+    }
+
     pub fn parse<B: BufRead>(reader: &mut B) -> Result<Request, Error>
     {
         let mut lines = reader.lines();

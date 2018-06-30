@@ -1,19 +1,16 @@
 use std::fmt;
 use super::Field;
 use super::ResponseStatus;
-use super::StatusCode;
 
 #[derive(Debug)]
 pub struct Response {
     line: ResponseStatus,
-    headers: Vec<Field>,
+    fields: Vec<Field>,
 }
 
 impl Response {
-    pub fn from(status: StatusCode) -> Response {
-        let line = ResponseStatus::new(status);
-        let headers = Vec::new();
-        Response{ line, headers }
+    pub fn new(line: ResponseStatus, fields: Vec<Field>) -> Response {
+        Response{ line, fields }
     }
 }
 
@@ -21,7 +18,7 @@ impl fmt::Display for Response {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut out = String::new();
         out.push_str(&format!("{}\r\n", self.line));
-        for boogle in &self.headers {
+        for boogle in &self.fields {
             out.push_str(&format!("{}\r\n", boogle));
         }
         f.pad(&out)

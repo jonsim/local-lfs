@@ -20,7 +20,53 @@ pub use self::request::Request;
 pub use self::response::Response;
 pub use self::body::Body;
 
+enum Status {
+    Request(RequestStatus),
+    Response(ResponseStatus),
+}
 
+pub struct MessageBuilder {
+    status: Status,
+    fields: Vec<Field>,
+    body: String,
+}
+
+impl MessageBuilder {
+    pub fn request(method: Method, target: String) -> MessageBuilder {
+        let status = Status::Request(RequestStatus::new(method, target));
+        MessageBuilder{ status, fields: Vec::new(), body: String::new() }
+    }
+
+    pub fn response(code: StatusCode) -> MessageBuilder {
+        let status = Status::Response(ResponseStatus::new(code));
+        MessageBuilder{ status, fields: Vec::new(), body: String::new() }
+    }
+
+    pub fn add_field(&mut self, field: Field) -> &mut Self {
+        self.fields.push(field);
+        self
+    }
+
+    pub fn add_body(&mut self, body: String) -> &mut Self {
+        self.body = body;
+        self
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        let body = Body::from(self.body);
+        let message = match self.status {
+            Status::Request(status) => {
+                let head = Request::new(status, self.fields);
+                format!("{}\r\n{}", head, body)
+            },
+            Status::Response(status) => {
+                let head = Response::new(status, self.fields);
+                format!("{}\r\n{}", head, body)
+            },
+        };
+        message.into_bytes()
+    }
+}
 
 
 /*

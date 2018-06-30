@@ -41,11 +41,13 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     let body = http::Body::parse(&mut reader, 0).expect("couldn't parse");
     println!("First Body:\n  {}", body);
 
-    let response_head = http::Response::from(StatusCode::Ok);
-    let response_body = http::Body::from(String::from("hello world"));
+    let response_body = String::from("hello world");
+    let mut response = http::MessageBuilder::response(StatusCode::Ok);
+    response.add_field(http::Field::ContentLength(response_body.len()))
+            .add_body(response_body);
     // println!("First Response:\n  {:?}", response);
-    let response = format!("{}\r\n{}", response_head, response_body);
-    writer.write(response.as_bytes())?;
+    // let response = format!("{}\r\n{}", response_head, response_body);
+    writer.write(&response.into_bytes())?;
 
     Ok(())
 }

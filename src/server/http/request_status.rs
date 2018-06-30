@@ -11,6 +11,11 @@ pub struct RequestStatus {
 }
 
 impl RequestStatus {
+    pub fn new(method: Method, target: String) -> RequestStatus {
+        let version = Version::new(1, 1);
+        RequestStatus{ version, method, target }
+    }
+
     pub fn from(line: String) -> Result<RequestStatus, Error> {
         // request-line = method SP request-target SP HTTP-version CRLF
         // Split by space.
