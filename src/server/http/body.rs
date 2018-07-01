@@ -52,6 +52,12 @@ mod tests {
         assert_eq!(expected.len(), actual.content_length());
     }
 
+    fn assert_parse_error(message: &str, result: Result<Body, Error>) {
+        assert!(result.is_err());
+        let description = format!("{}", result.unwrap_err());
+        assert_eq!(message, description);
+    }
+
     #[test]
     fn from_empty_string() {
         let body = Body::from(String::new());
@@ -68,7 +74,7 @@ mod tests {
     #[test]
     fn parse_no_bytes() {
         let mut reader = StringReader::new("");
-        let body = Body::parse(&mut reader, 0).expect("Parse failed");
+        let body = Body::parse(&mut reader, 0).unwrap();
         assert_body_empty(&body);
     }
 
@@ -76,7 +82,7 @@ mod tests {
     fn parse_exact_bytes() {
         let expected = "hello world";
         let mut reader = StringReader::new(expected);
-        let body = Body::parse(&mut reader, 11).expect("Parse failed");
+        let body = Body::parse(&mut reader, 11).unwrap();
         assert_body_equals(String::from(expected), &body);
     }
 
@@ -84,7 +90,7 @@ mod tests {
     fn parse_too_many_bytes() {
         let expected = "hello world";
         let mut reader = StringReader::new(expected);
-        let body = Body::parse(&mut reader, 4).expect("Parse failed");
+        let body = Body::parse(&mut reader, 4).unwrap();
         assert_body_equals(String::from(&expected[..4]), &body);
     }
 
@@ -93,8 +99,7 @@ mod tests {
         let expected = "hello world";
         let mut reader = StringReader::new(expected);
         let result = Body::parse(&mut reader, 20);
-        assert!(result.is_err());
-        let description = format!("{}", result.unwrap_err());
-        assert_eq!("HTTP parsing error: Failed to read requested bytes", description);
+        assert_parse_error("HTTP parsing error: Failed to read requested bytes",
+                result);
     }
 }

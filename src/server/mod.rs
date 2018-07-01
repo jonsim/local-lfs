@@ -40,7 +40,7 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
 
     let response_body = String::from("hello world");
     let mut response = http::MessageBuilder::response(StatusCode::Ok);
-    response.add_field(http::Field::ContentLength(response_body.len()))
+    response.add_field(http::Field::new_contentlength(response_body.len()))
             .add_body(response_body);
     // println!("First Response:\n  {:?}", response);
     // let response = format!("{}\r\n{}", response_head, response_body);
