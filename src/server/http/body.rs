@@ -36,7 +36,7 @@ impl fmt::Display for Body {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::tests::StringReader;
+    use super::super::tests::*;
 
     fn assert_body_empty(body: &Body) {
         let empty_vec: Vec<u8> = Vec::new();
@@ -50,12 +50,6 @@ mod tests {
         let expected = expected.into_bytes();
         assert_eq!(expected, actual.content);
         assert_eq!(expected.len(), actual.content_length());
-    }
-
-    fn assert_parse_error(message: &str, result: Result<Body, Error>) {
-        assert!(result.is_err());
-        let description = format!("{}", result.unwrap_err());
-        assert_eq!(message, description);
     }
 
     #[test]

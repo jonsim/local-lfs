@@ -72,8 +72,10 @@ impl MessageBuilder {
 #[cfg(test)]
 mod tests {
     use std::cmp;
+    use std::fmt;
     use std::io::{Read, BufRead};
     use std::io::Result as IoResult;
+    use super::Error;
 
     pub struct StringReader {
         content: String,
@@ -104,5 +106,12 @@ mod tests {
         fn consume(&mut self, amt: usize) {
             self.pos += amt;
         }
+    }
+
+
+    pub fn assert_parse_error<T: fmt::Debug>(message: &str, result: Result<T, Error>) {
+        assert!(result.is_err());
+        let description = format!("{}", result.unwrap_err());
+        assert_eq!(message, description);
     }
 }

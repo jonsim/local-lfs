@@ -56,17 +56,11 @@ impl fmt::Display for Field {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::tests::StringReader;
+    use super::super::tests::*;
 
     fn assert_field_equals(name: &str, value: &str, actual: &Field) {
         assert_eq!(String::from(name), actual.name);
         assert_eq!(String::from(value), actual.value);
-    }
-
-    fn assert_parse_error(message: &str, result: Result<Field, Error>) {
-        assert!(result.is_err());
-        let description = format!("{}", result.unwrap_err());
-        assert_eq!(message, description);
     }
 
     #[test]
