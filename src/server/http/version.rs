@@ -17,13 +17,13 @@ impl Version {
         // Split into bytes.
         let version: Vec<u8> = version_str.bytes().collect();
         if version.len() != 8 {
-            return Error::err("Bad version");
+            return Error::err("Invalid version");
         }
         // Parse major and minor versions.
         let major: u8 = version[5] - b'0';
         let minor: u8 = version[7] - b'0';
         if major > 9 || minor > 9 {
-            return Error::err("Bad version");
+            return Error::err("Invalid version");
         }
 
         Ok(Version{ major, minor })
