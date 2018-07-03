@@ -1,7 +1,6 @@
 use std::fmt;
 use std::error::Error as StdError;
 use std::io::Error as IoError;
-use std::num::ParseIntError;
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -29,14 +28,8 @@ impl StdError for ParseError {
     }
 }
 
-impl From<ParseIntError> for ParseError {
-    fn from(_: ParseIntError) -> ParseError {
-        ParseError::new("cannot parse integer")
-    }
-}
-
 impl From<IoError> for ParseError {
     fn from(_: IoError) -> ParseError {
-        ParseError::new("failed to read from connection")
+        ParseError::new("Failed to read from connection")
     }
 }

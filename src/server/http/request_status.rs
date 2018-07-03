@@ -84,8 +84,8 @@ mod tests {
         assert_parse_error("HTTP parsing error: Invalid request", status);
 
         // String of empty parameters.
-        let status = RequestStatus::from(String::from("   "));
-        assert_parse_error("HTTP parsing error: Invalid request", status);
+        let status = RequestStatus::from(String::from("  "));
+        assert_parse_error("HTTP parsing error: Invalid method", status);
     }
 
     #[test]
