@@ -33,3 +33,43 @@ impl From<IoError> for ParseError {
         ParseError::new("Failed to read from connection")
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::ErrorKind;
+
+    fn assert_error_equals(desc: &str, error: &ParseError) {
+        assert_eq!(desc, error.description);
+        assert_eq!(desc, error.description());
+    }
+
+    #[test]
+    fn new() {
+        let desc = "hello world";
+        assert_error_equals(desc, &ParseError::new(desc));
+    }
+
+    #[test]
+    fn err() {
+        let desc = "hello world";
+        let result = ParseError::err::<String>(desc);
+        assert!(result.is_err());
+        assert_error_equals(desc, &result.unwrap_err());
+    }
+
+    #[test]
+    fn display() {
+        assert_eq!("HTTP parsing error: hello world",
+            format!("{}", ParseError::new("hello world")));
+    }
+
+    #[test]
+    fn from_std_io_error() {
+        let payload = "foo";
+        let io_err = IoError::new(ErrorKind::ConnectionReset, payload);
+        let pa_err = ParseError::from(io_err);
+        assert_error_equals("Failed to read from connection", &pa_err);
+    }
+}
