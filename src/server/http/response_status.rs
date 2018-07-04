@@ -11,7 +11,7 @@ pub struct ResponseStatus {
 
 impl ResponseStatus {
     pub fn new(status: StatusCode) -> ResponseStatus {
-        let version = Version::new(1, 1);
+        let version = Version::new(1, 1).unwrap();
         ResponseStatus{ version, status }
     }
 
@@ -53,7 +53,8 @@ mod tests {
     #[test]
     fn new() {
         let status = ResponseStatus::new(StatusCode::Ok);
-        assert_status_equals(&Version::new(1, 1), &StatusCode::Ok, &status);
+        assert_status_equals(&Version::new(1, 1).unwrap(), &StatusCode::Ok,
+            &status);
     }
 
     #[test]
@@ -61,12 +62,14 @@ mod tests {
         // Test an easy one.
         let input = String::from("HTTP/1.1 200 OK");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_equals(&Version::new(1,1), &StatusCode::Ok, &status);
+        assert_status_equals(&Version::new(1,1).unwrap(), &StatusCode::Ok,
+            &status);
 
         // Test a slightly harder one.
         let input = String::from("HTTP/0.2 418 I'm a teapot");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_equals(&Version::new(0,2), &StatusCode::ImATeapot, &status);
+        assert_status_equals(&Version::new(0,2).unwrap(), &StatusCode::ImATeapot,
+            &status);
     }
 
     #[test]
@@ -125,17 +128,20 @@ mod tests {
         // Empty phrase.
         let input = String::from("HTTP/1.1 200 ");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_equals(&Version::new(1,1), &StatusCode::Ok, &status);
+        assert_status_equals(&Version::new(1,1).unwrap(), &StatusCode::Ok,
+            &status);
 
         // Mismatched phrase and status code.
         let input = String::from("HTTP/1.1 404 Payload Too Large");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_equals(&Version::new(1,1), &StatusCode::NotFound, &status);
+        assert_status_equals(&Version::new(1,1).unwrap(), &StatusCode::NotFound,
+            &status);
 
         // Totally bogus phrase.
         let input = String::from("HTTP/1.1 410 420");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_equals(&Version::new(1,1), &StatusCode::Gone, &status);
+        assert_status_equals(&Version::new(1,1).unwrap(), &StatusCode::Gone,
+            &status);
     }
 
     #[test]
