@@ -155,3 +155,31 @@ impl StatusCode {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mappings() {
+        // There's no sane way to test this without re-stating the enum values
+        // a third time. Instead just loop through all possible values and check
+        // it either produces valid output or errors appropriately. Also check
+        // the assignment is symmetric.
+        let mut some_count = 0;
+        for i in 100..999 {
+            match StatusCode::from(i) {
+                Some(status) => {
+                    assert!(!status.phrase().is_empty());
+                    assert_eq!(i, status.code());
+                    assert_eq!(i, status as u16);
+                    some_count += 1;
+                },
+                None => {
+                },
+            }
+        }
+        assert_eq!(62, some_count);
+    }
+}
