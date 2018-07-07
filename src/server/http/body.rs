@@ -45,7 +45,7 @@ mod tests {
         assert_eq!("", format!("{}", body));
     }
 
-    fn assert_body_equals(expected: String, actual: &Body, ) {
+    fn assert_body_eq(expected: String, actual: &Body, ) {
         assert_eq!(expected, format!("{}", actual));
         let expected = expected.into_bytes();
         assert_eq!(expected, actual.content);
@@ -62,7 +62,7 @@ mod tests {
     fn from_nonempty_string() {
         let expected = String::from("hello world");
         let body = Body::from(expected.clone());
-        assert_body_equals(expected, &body);
+        assert_body_eq(expected, &body);
     }
 
     #[test]
@@ -77,7 +77,7 @@ mod tests {
         let expected = "hello world";
         let mut reader = StringReader::new(expected);
         let body = Body::parse(&mut reader, 11).unwrap();
-        assert_body_equals(String::from(expected), &body);
+        assert_body_eq(String::from(expected), &body);
     }
 
     #[test]
@@ -85,7 +85,7 @@ mod tests {
         let expected = "hello world";
         let mut reader = StringReader::new(expected);
         let body = Body::parse(&mut reader, 4).unwrap();
-        assert_body_equals(String::from(&expected[..4]), &body);
+        assert_body_eq(String::from(&expected[..4]), &body);
     }
 
     #[test]

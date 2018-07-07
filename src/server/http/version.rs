@@ -60,7 +60,7 @@ mod tests {
     use super::*;
     use super::super::tests::*;
 
-    fn assert_version_equals(major: u8, minor: u8, actual: &Version) {
+    fn assert_version_eq(major: u8, minor: u8, actual: &Version) {
         assert_eq!(major, actual.major);
         assert_eq!(minor, actual.minor);
         assert_eq!(major, actual.major());
@@ -71,7 +71,7 @@ mod tests {
     fn new_valid() {
         for ma in 0..9 {
             for mi in 0..9 {
-                assert_version_equals(ma, mi, &Version::new(ma, mi).unwrap());
+                assert_version_eq(ma, mi, &Version::new(ma, mi).unwrap());
             }
         }
     }
@@ -91,7 +91,7 @@ mod tests {
         for ma in 0..9 {
             for mi in 0..9 {
                 let v = Version::from(&format!("HTTP/{}.{}", ma, mi)).unwrap();
-                assert_version_equals(ma, mi, &v);
+                assert_version_eq(ma, mi, &v);
             }
         }
     }

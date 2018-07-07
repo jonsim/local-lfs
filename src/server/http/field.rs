@@ -58,7 +58,7 @@ mod tests {
     use super::*;
     use super::super::tests::*;
 
-    fn assert_field_equals(name: &str, value: &str, actual: &Field) {
+    fn assert_field_eq(name: &str, value: &str, actual: &Field) {
         assert_eq!(String::from(name), actual.name);
         assert_eq!(String::from(value), actual.value);
     }
@@ -66,13 +66,13 @@ mod tests {
     #[test]
     fn new() {
         let field = Field::new(String::from("foo"), String::from("bar"));
-        assert_field_equals("foo", "bar", &field);
+        assert_field_eq("foo", "bar", &field);
     }
 
     #[test]
     fn new_contentlength() {
         let field = Field::new_contentlength(42);
-        assert_field_equals("Content-Length", "42", &field);
+        assert_field_eq("Content-Length", "42", &field);
     }
 
     #[test]
@@ -97,11 +97,11 @@ mod tests {
     fn from_valid_string() {
         // Test without whitespace.
         let field = Field::from(String::from("Foo:Bar")).unwrap();
-        assert_field_equals("Foo", "Bar", &field);
+        assert_field_eq("Foo", "Bar", &field);
 
         // Test with whitespace which must be removed.
         let field = Field::from(String::from("Foo: \t bar bug \t ")).unwrap();
-        assert_field_equals("Foo", "bar bug", &field);
+        assert_field_eq("Foo", "bar bug", &field);
     }
 
     #[test]

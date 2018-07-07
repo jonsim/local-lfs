@@ -40,7 +40,7 @@ mod tests {
     use super::*;
     use std::io::ErrorKind;
 
-    fn assert_error_equals(desc: &str, error: &ParseError) {
+    fn assert_error_eq(desc: &str, error: &ParseError) {
         assert_eq!(desc, error.description);
         assert_eq!(desc, error.description());
     }
@@ -48,7 +48,7 @@ mod tests {
     #[test]
     fn new() {
         let desc = "hello world";
-        assert_error_equals(desc, &ParseError::new(desc));
+        assert_error_eq(desc, &ParseError::new(desc));
     }
 
     #[test]
@@ -56,7 +56,7 @@ mod tests {
         let desc = "hello world";
         let result = ParseError::err::<String>(desc);
         assert!(result.is_err());
-        assert_error_equals(desc, &result.unwrap_err());
+        assert_error_eq(desc, &result.unwrap_err());
     }
 
     #[test]
@@ -70,6 +70,6 @@ mod tests {
         let payload = "foo";
         let io_err = IoError::new(ErrorKind::ConnectionReset, payload);
         let pa_err = ParseError::from(io_err);
-        assert_error_equals("Failed to read from connection", &pa_err);
+        assert_error_eq("Failed to read from connection", &pa_err);
     }
 }
