@@ -2,7 +2,7 @@ use std::fmt;
 use std::io::Read;
 use super::Error;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Body {
     content: Vec<u8>,
 }

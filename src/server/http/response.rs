@@ -6,7 +6,7 @@ use super::ResponseStatus;
 use super::StatusCode;
 use super::Version;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Response {
     line: ResponseStatus,
     fields: Vec<Field>,

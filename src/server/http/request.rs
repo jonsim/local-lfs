@@ -6,7 +6,7 @@ use super::Method;
 use super::RequestStatus;
 use super::Version;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Request {
     line: RequestStatus,
     fields: Vec<Field>,

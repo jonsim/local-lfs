@@ -3,7 +3,7 @@ use super::Error;
 use super::StatusCode;
 use super::Version;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ResponseStatus {
     pub version: Version,
     pub status: StatusCode,

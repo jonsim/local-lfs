@@ -1,7 +1,7 @@
 use std::fmt;
 use super::Error;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Field {
     pub name:  String,
     pub value: String,
