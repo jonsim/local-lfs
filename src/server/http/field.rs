@@ -3,8 +3,8 @@ use super::Error;
 
 #[derive(Debug)]
 pub struct Field {
-    name:  String,
-    value: String,
+    pub name:  String,
+    pub value: String,
 }
 
 impl Field {
@@ -28,18 +28,18 @@ impl Field {
         // Split by the first colon separator.
         let sep = line.find(':');
         if sep.is_none() {
-            return Error::err("Bad HTTP header");
+            return Error::err("Invalid field");
         }
         // Parse name. Names must not contain whitespace.
         let name = String::from(&line[..sep.unwrap()]);
         if name.find(char::is_whitespace).is_some() {
-            return Error::err("Bad HTTP header");
+            return Error::err("Invalid field");
         }
         // Parse value. Values must have leading/trailing whitespace removed.
         // Line folding unsupported.
         let value = String::from(line[sep.unwrap()+1..].trim());
         if value.find('\n').is_some() {
-            return Error::err("Bad HTTP header");
+            return Error::err("Invalid field");
         }
 
         Ok(Field{ name, value })
@@ -78,19 +78,19 @@ mod tests {
     #[test]
     fn from_empty_string() {
         let result = Field::from(String::from(""));
-        assert_parse_error("HTTP parsing error: Bad HTTP header", result);
+        assert_parse_error("HTTP parsing error: Invalid field", result);
     }
 
     #[test]
     fn from_invalid_name_string() {
         let result = Field::from(String::from("Invalid Foo: Bar"));
-        assert_parse_error("HTTP parsing error: Bad HTTP header", result);
+        assert_parse_error("HTTP parsing error: Invalid field", result);
     }
 
     #[test]
     fn from_invalid_value_string() {
         let result = Field::from(String::from("Foo: Invalid\nBar"));
-        assert_parse_error("HTTP parsing error: Bad HTTP header", result);
+        assert_parse_error("HTTP parsing error: Invalid field", result);
     }
 
     #[test]
