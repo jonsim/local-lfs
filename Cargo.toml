@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["Jonathan Simmonds <jonathansimmonds@gmail.com>"]
 
 [dependencies]
-num-traits = "0.2"
-num-derive = "0.2"
+num-traits = "0.2.17"
+num-derive = "0.4.1"
