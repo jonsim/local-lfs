@@ -48,9 +48,67 @@ model.
 TODO
 
 ## Getting started
-TODO
+
+Install a stable Rust toolchain and [uv](https://docs.astral.sh/uv/). `rustup`
+will add the `rustfmt` and `clippy` components from `rust-toolchain.toml`.
+
+Install the development tools:
+
+```sh
+uv sync
+```
+
+### Build and run
+
+Build the `example-app` executable:
+
+```sh
+cargo build
+```
+
+Run it through Cargo:
+
+```sh
+cargo run
+```
+
+Or install and run the executable directly:
+
+```sh
+cargo install --path .
+example-app
+```
+
+### Run the tests
+
+Run the Rust unit tests:
+
+```sh
+cargo test
+```
+
+Run the command-line smoke test:
+
+```sh
+uv run robot --outputdir target/robot test
+```
+
+### Run the checks
+
+Install the Git hooks once after cloning the project:
+
+```sh
+uv run pre-commit install
+```
+
+Run every check over the repository whenever needed:
+
+```sh
+uv run pre-commit run --all-files
+```
+
 
 ## License
 All files are licensed under the MIT license.
 
-&copy; Copyright 2018 Jonathan Simmonds
+&copy; Copyright 2018-2026 Jonathan Simmonds
