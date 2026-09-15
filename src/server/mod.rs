@@ -34,16 +34,14 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
     let mut writer = BufWriter::new(&stream);
 
     let request = http::Request::parse(&mut reader).expect("couldn't parse");
-    println!("First Request:\n  {}", request);
+    println!("  First Request:\n{:4}", request);
     let body = http::Body::parse(&mut reader, 0).expect("couldn't parse");
-    println!("First Body:\n  {}", body);
+    println!("  First Body:\n{:4}", body);
 
     let response_body = String::from("hello world");
     let mut response = http::MessageBuilder::response(StatusCode::Ok);
     response.add_field(http::Field::new_contentlength(response_body.len()))
             .add_body(response_body);
-    // println!("First Response:\n  {:?}", response);
-    // let response = format!("{}\r\n{}", response_head, response_body);
     writer.write(&response.into_bytes())?;
 
     Ok(())
