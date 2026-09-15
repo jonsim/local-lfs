@@ -1,6 +1,5 @@
 // Several HTTP building blocks are intentionally unused while the server is unfinished.
 #![allow(dead_code)]
-#![allow(non_local_definitions)] // num-derive 0.2 emits impls from an older macro style.
 
 #[macro_use]
 extern crate num_derive;
