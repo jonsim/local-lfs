@@ -11,12 +11,14 @@ This allows using traditional Git repository hosting services (e.g. Github,
 Bitbucket) without being bound by their binary file store size limits, instead
 storing versioned binary files on a separate service.
 
+
 ## Why use git-lfs
 Git Large File Storage is a Git extension to allow versioning large binary files
 in Git (something traditionally Git is not well suited for). This still uses the
 the Git client so allows uninterrupted use of Git workflows and provides an
 attractive alternative to traditional, commercial binary repository management
 solutions (e.g. Perforce, Plastic SCM).
+
 
 ## Why use local-lfs
 git-lfs does not come with a ready-to-use server, instead relying on third-party
@@ -44,8 +46,43 @@ This provides all the benefits of using a standard third-party repository host
 (e.g. visualisation / workflow tools) without being bound by their lfs pricing
 model.
 
+
+
 ## Features
-TODO
+
+Still in development, not ready for external use.
+
+### Current Status
+
+The project is an HTTP server prototype, not yet a usable Git LFS server. It
+builds and runs, but a Git LFS client cannot upload or download objects through
+it.
+
+Implemented:
+
+- The CLI accepts `--help`, `--port` (default `9090`), and `--store`. The server
+  listens on `127.0.0.1` at the selected port.
+- HTTP building blocks parse and format request and response lines, headers,
+  status codes, and fixed-length bodies. A message builder assembles requests
+  and responses. These components have 69 Rust unit tests.
+- The live server accepts one connection at a time, parses a request's headers,
+  and replies with a fixed HTTP `200 OK` and `hello world` body. The Robot
+  system test currently checks only that `--help` exits successfully.
+
+Still missing:
+
+- The `--store` path is parsed but never used. There is no object store,
+  compression, hashing, or persistence.
+- No Git LFS protocol endpoints or operations exist: batch negotiation, object
+  upload and download, and verification are all absent. The server does not
+  route by request method or target.
+- The live handler always reads a zero-length request body; it does not use
+  `Content-Length`. It handles connections sequentially, and a malformed
+  request or connection error can stop the process.
+- End-to-end tests need to exercise HTTP requests and Git LFS client workflows,
+  beyond the current CLI smoke test.
+
+
 
 ## Getting started
 
