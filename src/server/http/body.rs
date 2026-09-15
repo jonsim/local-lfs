@@ -25,6 +25,11 @@ impl Body {
     pub fn content_length(&self) -> usize {
         self.content.len()
     }
+
+    /// Take the original bytes without converting binary content to text.
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.content
+    }
 }
 
 impl fmt::Display for Body {

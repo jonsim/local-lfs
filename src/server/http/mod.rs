@@ -30,7 +30,7 @@ enum Status {
 pub struct MessageBuilder {
     status: Status,
     fields: Vec<Field>,
-    body: String,
+    body: Vec<u8>,
 }
 
 impl MessageBuilder {
@@ -39,7 +39,7 @@ impl MessageBuilder {
         MessageBuilder {
             status,
             fields: Vec::new(),
-            body: String::new(),
+            body: Vec::new(),
         }
     }
 
@@ -48,7 +48,7 @@ impl MessageBuilder {
         MessageBuilder {
             status,
             fields: Vec::new(),
-            body: String::new(),
+            body: Vec::new(),
         }
     }
 
@@ -64,23 +64,31 @@ impl MessageBuilder {
     }
 
     pub fn add_body(&mut self, body: String) -> &mut Self {
+        self.body = body.into_bytes();
+        self
+    }
+
+    /// Set a raw body for responses such as the binary echo route.
+    pub fn add_body_bytes(&mut self, body: Vec<u8>) -> &mut Self {
         self.body = body;
         self
     }
 
     pub fn into_bytes(self) -> Vec<u8> {
-        let body = Body::from(self.body);
-        let message = match self.status {
+        // Only the HTTP head is formatted as UTF-8 text. Appending the raw
+        // body preserves arbitrary file bytes exactly on the wire.
+        let mut message = match self.status {
             Status::Request(status) => {
                 let head = Request::new(status, self.fields);
-                format!("{}{}", head, body)
+                format!("{}", head).into_bytes()
             }
             Status::Response(status) => {
                 let head = Response::new(status, self.fields);
-                format!("{}{}", head, body)
+                format!("{}", head).into_bytes()
             }
         };
-        message.into_bytes()
+        message.extend_from_slice(&self.body);
+        message
     }
 }
 

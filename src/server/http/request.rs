@@ -49,6 +49,16 @@ impl Request {
     pub fn target(&self) -> &str {
         &self.line.target
     }
+
+    /// Return every value for a header name, matching HTTP's case-insensitive
+    /// field names. The caller decides whether repeated values are valid.
+    pub fn header_values(&self, name: &str) -> Vec<&str> {
+        self.fields
+            .iter()
+            .filter(move |field| field.name.eq_ignore_ascii_case(name))
+            .map(|field| field.value.as_str())
+            .collect()
+    }
 }
 
 impl fmt::Display for Request {

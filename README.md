@@ -64,23 +64,26 @@ Implemented:
   listens on `127.0.0.1` at the selected port.
 - HTTP building blocks parse and format request and response lines, headers,
   status codes, and fixed-length bodies. A message builder assembles requests
-  and responses. These components have 69 Rust unit tests.
-- The live server accepts one connection at a time, parses a request's headers,
-  and replies with a fixed HTTP `200 OK` and `hello world` body. The Robot
-  system test currently checks only that `--help` exits successfully.
+  and responses. The Rust suite includes unit tests and loopback TCP tests.
+- The live server accepts one connection at a time and routes `GET /` to a
+  `hello world` response and `POST /echo` to a binary echo response. It reads
+  bodies using `Content-Length`, sends framed responses, and returns HTTP errors
+  for bad requests, unsupported methods, and unknown paths. A client error no
+  longer stops the listener. The Robot system test still checks only that
+  `--help` exits successfully.
 
 Still missing:
 
 - The `--store` path is parsed but never used. There is no object store,
   compression, hashing, or persistence.
 - No Git LFS protocol endpoints or operations exist: batch negotiation, object
-  upload and download, and verification are all absent. The server does not
-  route by request method or target.
-- The live handler always reads a zero-length request body; it does not use
-  `Content-Length`. It handles connections sequentially, and a malformed
-  request or connection error can stop the process.
-- End-to-end tests need to exercise HTTP requests and Git LFS client workflows,
-  beyond the current CLI smoke test.
+  upload and download, and verification are all absent.
+- The handler still processes connections sequentially and holds request bodies
+  in memory, with a temporary 16 MiB limit. Chunked transfer encoding and
+  `Expect` requests are not supported. Object uploads will need a streaming
+  path.
+- End-to-end tests need to exercise Git LFS client workflows beyond the
+  current CLI smoke test and HTTP loopback tests.
 
 
 
