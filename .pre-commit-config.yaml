@@ -1,0 +1,75 @@
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-yaml
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: forbid-submodules
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      # Check Rust source file formatting.
+      - id: cargo-fmt
+        name: rust format
+        entry: cargo fmt --all
+        language: system
+        pass_filenames: false
+        files: ^(Cargo\.toml|rust-toolchain\.toml|src/.*\.rs|tests/.*\.rs)$
+      # Check every target and feature combination compiles.
+      - id: cargo-check
+        name: rust check
+        entry: cargo check --all-targets --all-features
+        language: system
+        pass_filenames: false
+        files: ^(Cargo\.toml|Cargo\.lock|rust-toolchain\.toml|src/.*\.rs|tests/.*\.rs)$
+      # Run Clippy over every target.
+      - id: cargo-clippy
+        name: rust lint
+        entry: cargo clippy --all-targets --all-features -- --deny warnings
+        language: system
+        pass_filenames: false
+        files: ^(Cargo\.toml|Cargo\.lock|rust-toolchain\.toml|src/.*\.rs|tests/.*\.rs)$
+      # Format Robot Framework files.
+      - id: robot-format
+        name: robot format
+        entry: uv run --frozen robocop format --overwrite --no-cache
+        language: system
+        pass_filenames: false
+        files: \.(robot|resource)$
+      # Lint Robot Framework files.
+      - id: robot-lint
+        name: robot lint
+        entry: uv run --frozen robocop check --no-cache
+        language: system
+        pass_filenames: false
+        files: \.(robot|resource)$
+      # Run the unit tests before pushing.
+      - id: cargo-test
+        name: unit test
+        entry: cargo test --all-features
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        files: ^(Cargo\.toml|Cargo\.lock|rust-toolchain\.toml|src/.*\.rs|tests/.*\.rs)$
+      # Run the system tests before pushing.
+      - id: robot-test
+        name: system test
+        entry: uv run --frozen robot --outputdir target/robot test
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        files: ^(Cargo\.toml|Cargo\.lock|pyproject\.toml|uv\.lock|src/.*\.rs|test/.*\.robot)$
