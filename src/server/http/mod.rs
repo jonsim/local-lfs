@@ -1,24 +1,24 @@
-mod error;
-mod method;
-mod version;
-mod status_code;
-mod field;
-mod request_status;
-mod response_status;
-mod request;
-mod response;
 mod body;
+mod error;
+mod field;
+mod method;
+mod request;
+mod request_status;
+mod response;
+mod response_status;
+mod status_code;
+mod version;
 
-pub use self::error::ParseError as Error;
-pub use self::method::Method;
-pub use self::version::Version;
-pub use self::status_code::StatusCode;
-pub use self::field::Field;
-use self::request_status::RequestStatus;
-use self::response_status::ResponseStatus;
-pub use self::request::Request;
-pub use self::response::Response;
 pub use self::body::Body;
+pub use self::error::ParseError as Error;
+pub use self::field::Field;
+pub use self::method::Method;
+pub use self::request::Request;
+use self::request_status::RequestStatus;
+pub use self::response::Response;
+use self::response_status::ResponseStatus;
+pub use self::status_code::StatusCode;
+pub use self::version::Version;
 
 #[derive(Debug, PartialEq)]
 enum Status {
@@ -36,12 +36,20 @@ pub struct MessageBuilder {
 impl MessageBuilder {
     pub fn request(method: Method, target: String) -> MessageBuilder {
         let status = Status::Request(RequestStatus::new(method, target));
-        MessageBuilder{ status, fields: Vec::new(), body: String::new() }
+        MessageBuilder {
+            status,
+            fields: Vec::new(),
+            body: String::new(),
+        }
     }
 
     pub fn response(code: StatusCode) -> MessageBuilder {
         let status = Status::Response(ResponseStatus::new(code));
-        MessageBuilder{ status, fields: Vec::new(), body: String::new() }
+        MessageBuilder {
+            status,
+            fields: Vec::new(),
+            body: String::new(),
+        }
     }
 
     pub fn add_field(&mut self, field: Field) -> &mut Self {
@@ -50,7 +58,8 @@ impl MessageBuilder {
     }
 
     pub fn add_field2(&mut self, name: &str, value: &str) -> &mut Self {
-        self.fields.push(Field::new(String::from(name), String::from(value)));
+        self.fields
+            .push(Field::new(String::from(name), String::from(value)));
         self
     }
 
@@ -65,24 +74,23 @@ impl MessageBuilder {
             Status::Request(status) => {
                 let head = Request::new(status, self.fields);
                 format!("{}{}", head, body)
-            },
+            }
             Status::Response(status) => {
                 let head = Response::new(status, self.fields);
                 format!("{}{}", head, body)
-            },
+            }
         };
         message.into_bytes()
     }
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::cmp;
     use std::fmt;
-    use std::io::{Read, BufRead};
     use std::io::Result as IoResult;
-    use super::*;
+    use std::io::{BufRead, Read};
 
     pub struct StringReader {
         content: String,
@@ -90,8 +98,11 @@ mod tests {
     }
 
     impl StringReader {
-        pub fn new<'a>(content: &'a str) -> StringReader {
-            StringReader{ content: String::from(content), pos: 0 }
+        pub fn new(content: &str) -> StringReader {
+            StringReader {
+                content: String::from(content),
+                pos: 0,
+            }
         }
     }
 
@@ -99,7 +110,7 @@ mod tests {
         fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
             let len = cmp::min(buf.len(), self.content.len() - self.pos);
             let end = self.pos + len;
-            &buf[..len].clone_from_slice(&self.content.as_bytes()[self.pos..end]);
+            buf[..len].copy_from_slice(&self.content.as_bytes()[self.pos..end]);
             self.pos += len;
             Ok(len)
         }
@@ -115,99 +126,125 @@ mod tests {
         }
     }
 
-
     pub fn assert_parse_error<T: fmt::Debug>(message: &str, result: Result<T, Error>) {
         assert!(result.is_err());
         let description = format!("{}", result.unwrap_err());
         assert_eq!(message, description);
     }
 
-
     const REQ_METHOD: Method = Method::GET;
-    const REQ_TARGET: &'static str = "/foo/bar";
+    const REQ_TARGET: &str = "/foo/bar";
     const RSP_CODE: StatusCode = StatusCode::ImATeapot;
-    const FIELD_N1: &'static str = "david";
-    const FIELD_V1: &'static str = "suchet";
-    const FIELD_N2: &'static str = "hello";
-    const FIELD_V2: &'static str = "world";
-    const BODY:     &'static str = "ze little grey cells";
-    const REQUEST_ENCODING_2FB: &'static str = "\
+    const FIELD_N1: &str = "david";
+    const FIELD_V1: &str = "suchet";
+    const FIELD_N2: &str = "hello";
+    const FIELD_V2: &str = "world";
+    const BODY: &str = "ze little grey cells";
+    const REQUEST_ENCODING_2FB: &str = "\
         GET /foo/bar HTTP/1.1\r\n\
         david: suchet\r\n\
         hello: world\r\n\
         \r\n\
         ze little grey cells";
-    const REQUEST_ENCODING_1FB: &'static str = "\
+    const REQUEST_ENCODING_1FB: &str = "\
         GET /foo/bar HTTP/1.1\r\n\
         david: suchet\r\n\
         \r\n\
         ze little grey cells";
-    const REQUEST_ENCODING_0FB: &'static str = "\
+    const REQUEST_ENCODING_0FB: &str = "\
         GET /foo/bar HTTP/1.1\r\n\
         \r\n\
         ze little grey cells";
-    const REQUEST_ENCODING_0F: &'static str = "\
+    const REQUEST_ENCODING_0F: &str = "\
         GET /foo/bar HTTP/1.1\r\n\
         \r\n";
-    const RESPONSE_ENCODING_2FB: &'static str = "\
+    const RESPONSE_ENCODING_2FB: &str = "\
         HTTP/1.1 418 I'm a teapot\r\n\
         david: suchet\r\n\
         hello: world\r\n\
         \r\n\
         ze little grey cells";
-    const RESPONSE_ENCODING_1FB: &'static str = "\
+    const RESPONSE_ENCODING_1FB: &str = "\
         HTTP/1.1 418 I'm a teapot\r\n\
         david: suchet\r\n\
         \r\n\
         ze little grey cells";
-    const RESPONSE_ENCODING_0FB: &'static str = "\
+    const RESPONSE_ENCODING_0FB: &str = "\
         HTTP/1.1 418 I'm a teapot\r\n\
         \r\n\
         ze little grey cells";
-    const RESPONSE_ENCODING_0F: &'static str = "\
+    const RESPONSE_ENCODING_0F: &str = "\
         HTTP/1.1 418 I'm a teapot\r\n\
         \r\n";
 
     #[test]
     fn request() {
         let mut builder = MessageBuilder::request(REQ_METHOD, String::from(REQ_TARGET));
-        builder.add_field2(FIELD_N1, FIELD_V1)
-               .add_field2(FIELD_N2, FIELD_V2)
-               .add_body(String::from(BODY));
-        assert_eq!(REQUEST_ENCODING_2FB.as_bytes(), builder.into_bytes().as_slice());
+        builder
+            .add_field2(FIELD_N1, FIELD_V1)
+            .add_field2(FIELD_N2, FIELD_V2)
+            .add_body(String::from(BODY));
+        assert_eq!(
+            REQUEST_ENCODING_2FB.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
 
         let mut builder = MessageBuilder::request(REQ_METHOD, String::from(REQ_TARGET));
-        builder.add_field2(FIELD_N1, FIELD_V1)
-               .add_body(String::from(BODY));
-        assert_eq!(REQUEST_ENCODING_1FB.as_bytes(), builder.into_bytes().as_slice());
+        builder
+            .add_field2(FIELD_N1, FIELD_V1)
+            .add_body(String::from(BODY));
+        assert_eq!(
+            REQUEST_ENCODING_1FB.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
 
         let mut builder = MessageBuilder::request(REQ_METHOD, String::from(REQ_TARGET));
         builder.add_body(String::from(BODY));
-        assert_eq!(REQUEST_ENCODING_0FB.as_bytes(), builder.into_bytes().as_slice());
+        assert_eq!(
+            REQUEST_ENCODING_0FB.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
 
         let builder = MessageBuilder::request(REQ_METHOD, String::from(REQ_TARGET));
-        assert_eq!(REQUEST_ENCODING_0F.as_bytes(), builder.into_bytes().as_slice());
+        assert_eq!(
+            REQUEST_ENCODING_0F.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
     }
 
     #[test]
     fn response() {
         let mut builder = MessageBuilder::response(RSP_CODE);
-        builder.add_field2(FIELD_N1, FIELD_V1)
-               .add_field2(FIELD_N2, FIELD_V2)
-               .add_body(String::from(BODY));
-        assert_eq!(RESPONSE_ENCODING_2FB.as_bytes(), builder.into_bytes().as_slice());
+        builder
+            .add_field2(FIELD_N1, FIELD_V1)
+            .add_field2(FIELD_N2, FIELD_V2)
+            .add_body(String::from(BODY));
+        assert_eq!(
+            RESPONSE_ENCODING_2FB.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
 
         let mut builder = MessageBuilder::response(RSP_CODE);
-        builder.add_field2(FIELD_N1, FIELD_V1)
-               .add_body(String::from(BODY));
-        assert_eq!(RESPONSE_ENCODING_1FB.as_bytes(), builder.into_bytes().as_slice());
+        builder
+            .add_field2(FIELD_N1, FIELD_V1)
+            .add_body(String::from(BODY));
+        assert_eq!(
+            RESPONSE_ENCODING_1FB.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
 
         let mut builder = MessageBuilder::response(RSP_CODE);
         builder.add_body(String::from(BODY));
-        assert_eq!(RESPONSE_ENCODING_0FB.as_bytes(), builder.into_bytes().as_slice());
+        assert_eq!(
+            RESPONSE_ENCODING_0FB.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
 
         let builder = MessageBuilder::response(RSP_CODE);
-        assert_eq!(RESPONSE_ENCODING_0F.as_bytes(), builder.into_bytes().as_slice());
+        assert_eq!(
+            RESPONSE_ENCODING_0F.as_bytes(),
+            builder.into_bytes().as_slice()
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
-use std::fmt;
 use super::Error;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Version {
@@ -12,7 +12,7 @@ impl Version {
         if major > 9 || minor > 9 {
             Error::err("Invalid version")
         } else {
-            Ok(Version{ major, minor })
+            Ok(Version { major, minor })
         }
     }
 
@@ -20,13 +20,14 @@ impl Version {
         // version = HTTP-M.m
         // Split into bytes.
         let version: Vec<u8> = version_str.bytes().collect();
-        if version.len() != 8 ||
-           version[0] != b'H' ||
-           version[1] != b'T' ||
-           version[2] != b'T' ||
-           version[3] != b'P' ||
-           version[4] != b'/' ||
-           version[6] != b'.' {
+        if version.len() != 8
+            || version[0] != b'H'
+            || version[1] != b'T'
+            || version[2] != b'T'
+            || version[3] != b'P'
+            || version[4] != b'/'
+            || version[6] != b'.'
+        {
             return Error::err("Invalid version");
         }
         // Parse major and minor versions.
@@ -36,7 +37,7 @@ impl Version {
             return Error::err("Invalid version");
         }
 
-        Ok(Version{ major, minor })
+        Ok(Version { major, minor })
     }
 
     pub fn major(&self) -> u8 {
@@ -54,11 +55,10 @@ impl fmt::Display for Version {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::tests::*;
+    use super::*;
 
     fn assert_version_eq(major: u8, minor: u8, actual: &Version) {
         assert_eq!(major, actual.major);
@@ -80,8 +80,7 @@ mod tests {
     fn new_invalid() {
         for ma in 10..255 {
             for mi in 10..255 {
-                assert_parse_error("HTTP parsing error: Invalid version",
-                    Version::new(ma, mi));
+                assert_parse_error("HTTP parsing error: Invalid version", Version::new(ma, mi));
             }
         }
     }

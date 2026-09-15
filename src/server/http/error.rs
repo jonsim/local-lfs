@@ -1,5 +1,5 @@
-use std::fmt;
 use std::error::Error as StdError;
+use std::fmt;
 use std::io::Error as IoError;
 
 #[derive(Debug)]
@@ -9,7 +9,7 @@ pub struct ParseError {
 
 impl ParseError {
     pub fn new(description: &'static str) -> ParseError {
-        ParseError{ description }
+        ParseError { description }
     }
     pub fn err<T>(description: &'static str) -> Result<T, ParseError> {
         Err(ParseError::new(description))
@@ -34,7 +34,6 @@ impl From<IoError> for ParseError {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,7 +41,7 @@ mod tests {
 
     fn assert_error_eq(desc: &str, error: &ParseError) {
         assert_eq!(desc, error.description);
-        assert_eq!(desc, error.description());
+        assert_eq!(desc, error.description);
     }
 
     #[test]
@@ -61,8 +60,10 @@ mod tests {
 
     #[test]
     fn display() {
-        assert_eq!("HTTP parsing error: hello world",
-            format!("{}", ParseError::new("hello world")));
+        assert_eq!(
+            "HTTP parsing error: hello world",
+            format!("{}", ParseError::new("hello world"))
+        );
     }
 
     #[test]

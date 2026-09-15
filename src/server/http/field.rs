@@ -1,21 +1,21 @@
-use std::fmt;
 use super::Error;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Field {
-    pub name:  String,
+    pub name: String,
     pub value: String,
 }
 
 impl Field {
     pub fn new(name: String, value: String) -> Field {
-        Field{ name, value }
+        Field { name, value }
     }
 
     pub fn new_contentlength(length: usize) -> Field {
         let name = String::from("Content-Length");
         let value = format!("{}", length);
-        Field{ name, value }
+        Field { name, value }
     }
 
     pub fn from(line: String) -> Result<Field, Error> {
@@ -37,12 +37,12 @@ impl Field {
         }
         // Parse value. Values must have leading/trailing whitespace removed.
         // Line folding unsupported.
-        let value = String::from(line[sep.unwrap()+1..].trim());
+        let value = String::from(line[sep.unwrap() + 1..].trim());
         if value.find('\n').is_some() {
             return Error::err("Invalid field");
         }
 
-        Ok(Field{ name, value })
+        Ok(Field { name, value })
     }
 }
 
@@ -52,11 +52,10 @@ impl fmt::Display for Field {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::tests::*;
+    use super::*;
 
     fn assert_field_eq(name: &str, value: &str, actual: &Field) {
         assert_eq!(String::from(name), actual.name);

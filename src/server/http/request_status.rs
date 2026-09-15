@@ -1,7 +1,7 @@
-use std::fmt;
 use super::Error;
 use super::Method;
 use super::Version;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct RequestStatus {
@@ -13,7 +13,11 @@ pub struct RequestStatus {
 impl RequestStatus {
     pub fn new(method: Method, target: String) -> RequestStatus {
         let version = Version::new(1, 1).unwrap();
-        RequestStatus{ version, method, target }
+        RequestStatus {
+            version,
+            method,
+            target,
+        }
     }
 
     pub fn from(line: String) -> Result<RequestStatus, Error> {
@@ -31,7 +35,11 @@ impl RequestStatus {
         }
         let version = Version::from(parts[2])?;
 
-        Ok(RequestStatus{ version, method, target })
+        Ok(RequestStatus {
+            version,
+            method,
+            target,
+        })
     }
 }
 
@@ -41,14 +49,17 @@ impl fmt::Display for RequestStatus {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::tests::*;
+    use super::*;
 
-    fn assert_status_eq(version: &Version, method: &Method, target: &String,
-            actual: &RequestStatus) {
+    fn assert_status_eq(
+        version: &Version,
+        method: &Method,
+        target: &String,
+        actual: &RequestStatus,
+    ) {
         assert_eq!(version, &actual.version);
         assert_eq!(method, &actual.method);
         assert_eq!(target, &actual.target);
@@ -58,8 +69,7 @@ mod tests {
     fn new() {
         let target = String::from("/hello");
         let status = RequestStatus::new(Method::GET, target.clone());
-        assert_status_eq(&Version::new(1, 1).unwrap(), &Method::GET,
-            &target, &status);
+        assert_status_eq(&Version::new(1, 1).unwrap(), &Method::GET, &target, &status);
     }
 
     #[test]
@@ -67,14 +77,22 @@ mod tests {
         // Test an easy one.
         let input = String::from("GET /foo/bar HTTP/1.2");
         let status = RequestStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(1,2).unwrap(), &Method::GET,
-            &String::from("/foo/bar"), &status);
+        assert_status_eq(
+            &Version::new(1, 2).unwrap(),
+            &Method::GET,
+            &String::from("/foo/bar"),
+            &status,
+        );
 
         // Test a slightly harder one.
         let input = String::from("CONNECT / HTTP/0.0");
         let status = RequestStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(0,0).unwrap(), &Method::CONNECT,
-            &String::from("/"), &status);
+        assert_status_eq(
+            &Version::new(0, 0).unwrap(),
+            &Method::CONNECT,
+            &String::from("/"),
+            &status,
+        );
     }
 
     #[test]

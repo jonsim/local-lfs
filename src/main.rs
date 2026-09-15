@@ -1,4 +1,9 @@
-#[macro_use] extern crate num_derive;
+// Several HTTP building blocks are intentionally unused while the server is unfinished.
+#![allow(dead_code)]
+#![allow(non_local_definitions)] // num-derive 0.2 emits impls from an older macro style.
+
+#[macro_use]
+extern crate num_derive;
 
 mod server;
 
@@ -13,8 +18,11 @@ struct Args {
 
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Args {{ port: {:?}, store_path: {:?} }}",
-                self.port, self.store_path)
+        write!(
+            f,
+            "Args {{ port: {:?}, store_path: {:?} }}",
+            self.port, self.store_path
+        )
     }
 }
 
@@ -22,11 +30,15 @@ impl Args {
     fn _usage() {
         let prog = env::current_exe();
         let prog = match prog.as_ref() {
-            Ok(p) => p.file_name().expect("Executable path does not have basename")
-                      .to_str().expect("Executable path contains invalid UTF8"),
+            Ok(p) => p
+                .file_name()
+                .expect("Executable path does not have basename")
+                .to_str()
+                .expect("Executable path contains invalid UTF8"),
             Err(_) => "local-lfs",
         };
-        println!("\
+        println!(
+            "\
 usage: {} [-h] [-p PORT] [-s PATH]
 
 A simple git-lfs server which can echo git commits to an external server and
@@ -39,25 +51,31 @@ optional arguments:
             store will be created. This may be a folder backed by cloud storage
             client (e.g. Dropbox, Google Drive etc). Defaults to './lfo-store'.
     -h, --help              Print this message and exit.",
-        prog);
+            prog
+        );
         process::exit(0);
     }
 
     fn parse_cmdline() -> Args {
         let mut iter = env::args();
-        iter.next();    // Skip arg0
+        iter.next(); // Skip arg0
 
         let mut port: Option<u16> = None;
         let mut store_path: Option<String> = None;
         while let Some(arg) = iter.next() {
             match arg.as_ref() {
                 "-h" | "--help" => Args::_usage(),
-                "-p" | "--port" => port = Some(iter.next()
-                                .expect("Port number must be given")
-                                .parse()
-                                .expect("Port number must be numeric")),
-                "-s" | "--store" => store_path = Some(iter.next()
-                                .expect("Store path must be given")),
+                "-p" | "--port" => {
+                    port = Some(
+                        iter.next()
+                            .expect("Port number must be given")
+                            .parse()
+                            .expect("Port number must be numeric"),
+                    )
+                }
+                "-s" | "--store" => {
+                    store_path = Some(iter.next().expect("Store path must be given"))
+                }
                 _ => panic!("Unexpected argument"),
             }
         }

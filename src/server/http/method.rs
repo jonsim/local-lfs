@@ -1,6 +1,7 @@
-use std::fmt;
 use super::Error;
+use std::fmt;
 
+#[allow(clippy::upper_case_acronyms)] // HTTP method names are conventionally uppercase.
 #[derive(Debug, PartialEq)]
 pub enum Method {
     GET,
@@ -17,15 +18,15 @@ pub enum Method {
 impl Method {
     pub fn from(method: &str) -> Result<Method, Error> {
         match method {
-            "GET"     => Ok(Method::GET),
-            "HEAD"    => Ok(Method::HEAD),
-            "POST"    => Ok(Method::POST),
-            "PUT"     => Ok(Method::PUT),
-            "DELETE"  => Ok(Method::DELETE),
-            "TRACE"   => Ok(Method::TRACE),
+            "GET" => Ok(Method::GET),
+            "HEAD" => Ok(Method::HEAD),
+            "POST" => Ok(Method::POST),
+            "PUT" => Ok(Method::PUT),
+            "DELETE" => Ok(Method::DELETE),
+            "TRACE" => Ok(Method::TRACE),
             "OPTIONS" => Ok(Method::OPTIONS),
             "CONNECT" => Ok(Method::CONNECT),
-            "PATCH"   => Ok(Method::PATCH),
+            "PATCH" => Ok(Method::PATCH),
             _ => Error::err("Invalid method"),
         }
     }
@@ -37,23 +38,30 @@ impl fmt::Display for Method {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::tests::*;
+    use super::*;
 
     #[test]
     fn from_valid_string() {
-        let names = ["CONNECT", "DELETE", "GET",
-                     "HEAD", "OPTIONS", "PATCH",
-                     "POST", "PUT", "TRACE"];
-        let mut enums = [Method::CONNECT, Method::DELETE, Method::GET,
-                         Method::HEAD, Method::OPTIONS, Method::PATCH,
-                         Method::POST, Method::PUT, Method::TRACE];
+        let names = [
+            "CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE",
+        ];
+        let enums = [
+            Method::CONNECT,
+            Method::DELETE,
+            Method::GET,
+            Method::HEAD,
+            Method::OPTIONS,
+            Method::PATCH,
+            Method::POST,
+            Method::PUT,
+            Method::TRACE,
+        ];
         assert_eq!(names.len(), enums.len());
-        for (value, expected) in names.iter().zip(enums.iter_mut()) {
-            let mut actual = Method::from(value).unwrap();
+        for (value, expected) in names.iter().zip(enums.iter()) {
+            let actual = Method::from(value).unwrap();
             assert_eq!(expected, &actual);
             assert_eq!(value, &format!("{}", actual));
         }

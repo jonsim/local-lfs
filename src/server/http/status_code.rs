@@ -6,71 +6,71 @@ use self::num_traits::ToPrimitive;
 #[derive(Debug, FromPrimitive, ToPrimitive, PartialEq)]
 pub enum StatusCode {
     // 100: Informational.
-    Continue                    = 100,
-    SwitchingProtocols          = 101,
-    Processing                  = 102,
-    EarlyHints                  = 103,
+    Continue = 100,
+    SwitchingProtocols = 101,
+    Processing = 102,
+    EarlyHints = 103,
     // 200: Success.
-    Ok                          = 200,
-    Created                     = 201,
-    Accepted                    = 202,
+    Ok = 200,
+    Created = 201,
+    Accepted = 202,
     NonAuthoritativeInformation = 203,
-    NoContent                   = 204,
-    ResetContent                = 205,
-    PartialContent              = 206,
-    MultiStatus                 = 207,
-    AlreadyReported             = 208,
-    IMUsed                      = 226,
+    NoContent = 204,
+    ResetContent = 205,
+    PartialContent = 206,
+    MultiStatus = 207,
+    AlreadyReported = 208,
+    IMUsed = 226,
     // 300: Redirection.
-    MultipleChoices             = 300,
-    MovedPermanently            = 301,
-    Found                       = 302,
-    SeeOther                    = 303,
-    NotModified                 = 304,
-    UseProxy                    = 305,
-    SwitchProxy                 = 306,
-    TemporaryRedirect           = 307,
-    PermanentRedirect           = 308,
+    MultipleChoices = 300,
+    MovedPermanently = 301,
+    Found = 302,
+    SeeOther = 303,
+    NotModified = 304,
+    UseProxy = 305,
+    SwitchProxy = 306,
+    TemporaryRedirect = 307,
+    PermanentRedirect = 308,
     // 400: Client errors.
-    BadRequest                  = 400,
-    Unauthorized                = 401,
-    PaymentRequired             = 402,
-    Forbidden                   = 403,
-    NotFound                    = 404,
-    MethodNotAllowed            = 405,
-    NotAcceptable               = 406,
+    BadRequest = 400,
+    Unauthorized = 401,
+    PaymentRequired = 402,
+    Forbidden = 403,
+    NotFound = 404,
+    MethodNotAllowed = 405,
+    NotAcceptable = 406,
     ProxyAuthenticationRequired = 407,
-    RequestTimeout              = 408,
-    Conflict                    = 409,
-    Gone                        = 410,
-    LengthRequired              = 411,
-    PreconditionFailed          = 412,
-    PayloadTooLarge             = 413,
-    URITooLong                  = 414,
-    UnsupportedMediaType        = 415,
-    RangeNotSatisfiable         = 416,
-    ExpectationFailed           = 417,
-    ImATeapot                   = 418,
-    MisdirectedRequest          = 421,
-    UnprocessableEntity         = 422,
-    Locked                      = 423,
-    FailedDependency            = 424,
-    UpgradeRequired             = 426,
-    PreconditionRequired        = 428,
-    TooManyRequests             = 429,
+    RequestTimeout = 408,
+    Conflict = 409,
+    Gone = 410,
+    LengthRequired = 411,
+    PreconditionFailed = 412,
+    PayloadTooLarge = 413,
+    URITooLong = 414,
+    UnsupportedMediaType = 415,
+    RangeNotSatisfiable = 416,
+    ExpectationFailed = 417,
+    ImATeapot = 418,
+    MisdirectedRequest = 421,
+    UnprocessableEntity = 422,
+    Locked = 423,
+    FailedDependency = 424,
+    UpgradeRequired = 426,
+    PreconditionRequired = 428,
+    TooManyRequests = 429,
     RequestHeaderFieldsTooLarge = 431,
-    UnavailableForLegalReasons  = 451,
+    UnavailableForLegalReasons = 451,
     // 500: Server errors.
-    InternalServerError         = 500,
-    NotImplemented              = 501,
-    BadGateway                  = 502,
-    ServiceUnavailable          = 503,
-    GatewayTimeout              = 504,
-    HTTPVersionNotSupported     = 505,
-    VariantAlsoNegotiates       = 506,
-    InsufficientStorage         = 507,
-    LoopDetected                = 508,
-    NotExtended                 = 510,
+    InternalServerError = 500,
+    NotImplemented = 501,
+    BadGateway = 502,
+    ServiceUnavailable = 503,
+    GatewayTimeout = 504,
+    HTTPVersionNotSupported = 505,
+    VariantAlsoNegotiates = 506,
+    InsufficientStorage = 507,
+    LoopDetected = 508,
+    NotExtended = 510,
     NetworkAuthenticationRequired = 511,
 }
 
@@ -156,7 +156,6 @@ impl StatusCode {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,15 +168,11 @@ mod tests {
         // the assignment is symmetric.
         let mut some_count = 0;
         for i in 100..999 {
-            match StatusCode::from(i) {
-                Some(status) => {
-                    assert!(!status.phrase().is_empty());
-                    assert_eq!(i, status.code());
-                    assert_eq!(i, status as u16);
-                    some_count += 1;
-                },
-                None => {
-                },
+            if let Some(status) = StatusCode::from(i) {
+                assert!(!status.phrase().is_empty());
+                assert_eq!(i, status.code());
+                assert_eq!(i, status as u16);
+                some_count += 1;
             }
         }
         assert_eq!(62, some_count);

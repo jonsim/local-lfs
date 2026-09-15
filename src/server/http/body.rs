@@ -1,6 +1,6 @@
+use super::Error;
 use std::fmt;
 use std::io::Read;
-use super::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct Body {
@@ -11,14 +11,15 @@ impl Body {
     pub fn parse<R: Read>(reader: &mut R, length: usize) -> Result<Body, Error> {
         let mut content: Vec<u8> = vec![0; length];
         match reader.read_exact(content.as_mut_slice()) {
-            Ok(_) => Ok(Body{ content }),
+            Ok(_) => Ok(Body { content }),
             Err(_) => Err(Error::new("Failed to read requested bytes")),
         }
-        
     }
 
     pub fn from(string: String) -> Body {
-        Body{ content: string.into_bytes() }
+        Body {
+            content: string.into_bytes(),
+        }
     }
 
     pub fn content_length(&self) -> usize {
@@ -32,11 +33,10 @@ impl fmt::Display for Body {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::tests::*;
+    use super::*;
 
     fn assert_body_empty(body: &Body) {
         let empty_vec: Vec<u8> = Vec::new();
@@ -45,7 +45,7 @@ mod tests {
         assert_eq!("", format!("{}", body));
     }
 
-    fn assert_body_eq(expected: String, actual: &Body, ) {
+    fn assert_body_eq(expected: String, actual: &Body) {
         assert_eq!(expected, format!("{}", actual));
         let expected = expected.into_bytes();
         assert_eq!(expected, actual.content);
@@ -93,7 +93,6 @@ mod tests {
         let expected = "hello world";
         let mut reader = StringReader::new(expected);
         let result = Body::parse(&mut reader, 20);
-        assert_parse_error("HTTP parsing error: Failed to read requested bytes",
-                result);
+        assert_parse_error("HTTP parsing error: Failed to read requested bytes", result);
     }
 }

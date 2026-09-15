@@ -1,4 +1,7 @@
 default_install_hook_types: [pre-commit, pre-push]
+# The bundled legacy LFS test server contains generated binaries and a nested
+# checkout; run repository checks on the project sources instead.
+exclude: ^lfs-test-server/
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

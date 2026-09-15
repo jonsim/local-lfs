@@ -1,7 +1,7 @@
-use std::fmt;
 use super::Error;
 use super::StatusCode;
 use super::Version;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct ResponseStatus {
@@ -12,7 +12,7 @@ pub struct ResponseStatus {
 impl ResponseStatus {
     pub fn new(status: StatusCode) -> ResponseStatus {
         let version = Version::new(1, 1).unwrap();
-        ResponseStatus{ version, status }
+        ResponseStatus { version, status }
     }
 
     pub fn from(line: String) -> Result<ResponseStatus, Error> {
@@ -27,25 +27,27 @@ impl ResponseStatus {
         let status: u16 = parts[1].parse().map_err(|_| Error::new("Invalid status"))?;
         let status = StatusCode::from(status).ok_or(Error::new("Invalid status"))?;
 
-        Ok(ResponseStatus{ version, status })
+        Ok(ResponseStatus { version, status })
     }
 }
 
 impl fmt::Display for ResponseStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("{} {} {}", self.version, self.status.code(),
-                       self.status.phrase()))
+        f.pad(&format!(
+            "{} {} {}",
+            self.version,
+            self.status.code(),
+            self.status.phrase()
+        ))
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::tests::*;
+    use super::*;
 
-    fn assert_status_eq(version: &Version, status: &StatusCode,
-            actual: &ResponseStatus) {
+    fn assert_status_eq(version: &Version, status: &StatusCode, actual: &ResponseStatus) {
         assert_eq!(version, &actual.version);
         assert_eq!(status, &actual.status);
     }
@@ -53,8 +55,7 @@ mod tests {
     #[test]
     fn new() {
         let status = ResponseStatus::new(StatusCode::Ok);
-        assert_status_eq(&Version::new(1, 1).unwrap(), &StatusCode::Ok,
-            &status);
+        assert_status_eq(&Version::new(1, 1).unwrap(), &StatusCode::Ok, &status);
     }
 
     #[test]
@@ -62,14 +63,16 @@ mod tests {
         // Test an easy one.
         let input = String::from("HTTP/1.1 200 OK");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(1,1).unwrap(), &StatusCode::Ok,
-            &status);
+        assert_status_eq(&Version::new(1, 1).unwrap(), &StatusCode::Ok, &status);
 
         // Test a slightly harder one.
         let input = String::from("HTTP/0.2 418 I'm a teapot");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(0,2).unwrap(), &StatusCode::ImATeapot,
-            &status);
+        assert_status_eq(
+            &Version::new(0, 2).unwrap(),
+            &StatusCode::ImATeapot,
+            &status,
+        );
     }
 
     #[test]
@@ -128,20 +131,17 @@ mod tests {
         // Empty phrase.
         let input = String::from("HTTP/1.1 200 ");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(1,1).unwrap(), &StatusCode::Ok,
-            &status);
+        assert_status_eq(&Version::new(1, 1).unwrap(), &StatusCode::Ok, &status);
 
         // Mismatched phrase and status code.
         let input = String::from("HTTP/1.1 404 Payload Too Large");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(1,1).unwrap(), &StatusCode::NotFound,
-            &status);
+        assert_status_eq(&Version::new(1, 1).unwrap(), &StatusCode::NotFound, &status);
 
         // Totally bogus phrase.
         let input = String::from("HTTP/1.1 410 420");
         let status = ResponseStatus::from(input).unwrap();
-        assert_status_eq(&Version::new(1,1).unwrap(), &StatusCode::Gone,
-            &status);
+        assert_status_eq(&Version::new(1, 1).unwrap(), &StatusCode::Gone, &status);
     }
 
     #[test]

@@ -1,15 +1,15 @@
 mod http;
 
+use self::http::StatusCode;
 use std::io;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
-use std::net::{TcpListener, TcpStream, SocketAddr};
-use self::http::StatusCode;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 
 pub fn accept_connections(port: u16) {
-    let listen_addr = SocketAddr::from(([127,0,0,1], port));
-    let listener = TcpListener::bind(listen_addr).expect(&format!(
-        "Failed to bind to {}", listen_addr));
+    let listen_addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let listener = TcpListener::bind(listen_addr)
+        .unwrap_or_else(|error| panic!("Failed to bind to {}: {}", listen_addr, error));
 
     println!("Listening on {}", listen_addr);
     loop {
@@ -40,9 +40,10 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream) -> io::Result<()> {
 
     let response_body = String::from("hello world");
     let mut response = http::MessageBuilder::response(StatusCode::Ok);
-    response.add_field(http::Field::new_contentlength(response_body.len()))
-            .add_body(response_body);
-    writer.write(&response.into_bytes())?;
+    response
+        .add_field(http::Field::new_contentlength(response_body.len()))
+        .add_body(response_body);
+    writer.write_all(&response.into_bytes())?;
 
     Ok(())
 }
