@@ -75,4 +75,4 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-push]
-        files: ^(Cargo\.toml|Cargo\.lock|pyproject\.toml|uv\.lock|src/.*\.rs|test/.*\.robot)$
+        files: ^(Cargo\.toml|Cargo\.lock|pyproject\.toml|uv\.lock|src/.*\.rs|test/.*\.(robot|py))$

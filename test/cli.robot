@@ -1,7 +1,8 @@
 *** Settings ***
-Documentation       Smoke tests for the CLI.
+Documentation       CLI smoke and real Git LFS workflow tests.
 
 Library             Process
+Library             LfsWorkflow.py
 
 
 *** Variables ***
@@ -14,7 +15,11 @@ Has Help Text
     ${result}=    Run Local LFS    --help
 
     Should Be Equal As Integers    ${result.rc}    0
-    # Should Be Equal    ${result.stdout}    local-lfs
+    Should Contain    ${result.stdout}    usage:
+
+Git LFS Push And Fetch
+    [Documentation]    Pushes an LFS object through the pre-push hook, then pulls it into a fresh clone.
+    Git Lfs Push And Fetch
 
 
 *** Keywords ***

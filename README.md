@@ -56,7 +56,7 @@ Still in development, not ready for external use.
 
 The project now implements Git LFS batch negotiation and basic HTTP object
 transfers against a persistent local store. The protocol flow is covered by
-loopback tests, but a real Git LFS client push and fetch has not yet been tested.
+loopback tests and a real Git LFS client push and fetch system test.
 
 Implemented:
 
@@ -69,8 +69,8 @@ Implemented:
   `hello world` response and `POST /echo` to a binary echo response. It reads
   bodies using `Content-Length`, sends framed responses, and returns HTTP errors
   for bad requests, unsupported methods, and unknown paths. A client error no
-  longer stops the listener. The Robot system test still checks only that
-  `--help` exits successfully.
+  longer stops the listener. The Robot suite checks the CLI help output and
+  the Git LFS push/fetch workflow below.
 - `--store` selects a persistent local object directory (default
   `./lfo-store`). `PUT /objects/{oid}` streams an upload to a temporary file,
   checks its `Content-Length` and SHA-256 ID, then publishes it. `GET
@@ -80,11 +80,13 @@ Implemented:
   selects the basic transfer adapter, and returns action URLs for missing
   uploads or available downloads. Already stored uploads need no action;
   missing downloads and invalid object claims produce per-object errors.
+- The system test creates a local bare Git remote, pushes an LFS-tracked binary
+  through Git's pre-push hook, then pulls it into a fresh clone and compares
+  the recovered bytes. It requires `git-lfs` on `PATH`.
 
 Still missing:
 
-- A real Git LFS client push and fetch workflow still needs an end-to-end
-  system test. Optional verification actions are not implemented.
+- Optional verification actions are not implemented.
 - Objects are stored as raw bytes. Compression and cloud-backed storage are not
   implemented.
 - The handler still processes connections sequentially and holds request bodies
@@ -96,8 +98,9 @@ Still missing:
 
 ## Getting started
 
-Install a stable Rust toolchain and [uv](https://docs.astral.sh/uv/). `rustup`
-will add the `rustfmt` and `clippy` components from `rust-toolchain.toml`.
+Install a stable Rust toolchain, [uv](https://docs.astral.sh/uv/), and
+[`git-lfs`](https://git-lfs.com/). `rustup` will add the `rustfmt` and `clippy`
+components from `rust-toolchain.toml`.
 
 Install the development tools:
 
@@ -107,7 +110,7 @@ uv sync
 
 ### Build and run
 
-Build the `example-app` executable:
+Build the `local-lfs` executable:
 
 ```sh
 cargo build
@@ -123,7 +126,7 @@ Or install and run the executable directly:
 
 ```sh
 cargo install --path .
-example-app
+local-lfs
 ```
 
 ### Run the tests
@@ -134,7 +137,7 @@ Run the Rust unit tests:
 cargo test
 ```
 
-Run the command-line smoke test:
+Run the CLI smoke and Git LFS push/fetch system tests:
 
 ```sh
 uv run robot --outputdir target/robot test
