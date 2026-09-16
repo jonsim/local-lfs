@@ -54,9 +54,9 @@ Still in development, not ready for external use.
 
 ### Current Status
 
-The project is an HTTP server prototype, not yet a usable Git LFS server. It
-builds and runs, but a Git LFS client cannot upload or download objects through
-it.
+The project can store and transfer raw objects over HTTP, but is not yet a
+usable Git LFS server. A Git LFS client still cannot negotiate transfers because
+the batch API is missing.
 
 Implemented:
 
@@ -71,17 +71,22 @@ Implemented:
   for bad requests, unsupported methods, and unknown paths. A client error no
   longer stops the listener. The Robot system test still checks only that
   `--help` exits successfully.
+- `--store` selects a persistent local object directory (default
+  `./lfo-store`). `PUT /objects/{oid}` streams an upload to a temporary file,
+  checks its `Content-Length` and SHA-256 ID, then publishes it. `GET
+  /objects/{oid}` streams the stored bytes back. Invalid or incomplete uploads
+  leave no published object.
 
 Still missing:
 
-- The `--store` path is parsed but never used. There is no object store,
-  compression, hashing, or persistence.
-- No Git LFS protocol endpoints or operations exist: batch negotiation, object
-  upload and download, and verification are all absent.
+- Batch negotiation and optional verification endpoints are absent, so standard
+  Git LFS client push and fetch workflows do not work yet.
+- Objects are stored as raw bytes. Compression and cloud-backed storage are not
+  implemented.
 - The handler still processes connections sequentially and holds request bodies
-  in memory, with a temporary 16 MiB limit. Chunked transfer encoding and
-  `Expect` requests are not supported. Object uploads will need a streaming
-  path.
+  for non-object routes in memory, with a temporary 16 MiB limit. Object
+  transfers stream, but chunked transfer encoding and `Expect` requests are
+  not supported.
 - End-to-end tests need to exercise Git LFS client workflows beyond the
   current CLI smoke test and HTTP loopback tests.
 

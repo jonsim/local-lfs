@@ -3,6 +3,8 @@
 
 #[macro_use]
 extern crate num_derive;
+extern crate hex;
+extern crate sha2;
 
 mod server;
 
@@ -89,5 +91,7 @@ fn main() {
 
     println!("{:?}", args);
 
-    server::accept_connections(port);
+    // --store selects the directory for raw content-addressed objects.
+    let store_path = args.store_path.as_deref().unwrap_or("./lfo-store");
+    server::accept_connections(port, store_path);
 }

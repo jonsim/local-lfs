@@ -12,3 +12,6 @@
 
 # test server
 /lfs-test-server
+
+# Default local object store
+/lfo-store/

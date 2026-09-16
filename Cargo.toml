@@ -6,3 +6,5 @@ authors = ["Jonathan Simmonds <jonathansimmonds@gmail.com>"]
 [dependencies]
 num-traits = "0.2.19"
 num-derive = "0.5.1"
+sha2 = "0.11.0"
+hex = "0.4.3"
