@@ -1,6 +1,7 @@
 //! Small, single-connection-at-a-time HTTP server prototype.
 //! The request handler is kept separate from the accept loop so a bad client
 //! can receive an error response without bringing down the listener.
+mod batch;
 mod http;
 mod store;
 
@@ -13,6 +14,7 @@ use std::time::Duration;
 // Ordinary prototype routes hold the body in memory, so they need a ceiling.
 // PUT /objects streams directly to a temporary file and does not use this cap.
 const MAX_BODY_BYTES: usize = 16 * 1024 * 1024;
+const LFS_JSON: &str = "application/vnd.git-lfs+json";
 
 /// Listen on loopback and keep accepting clients after a connection fails.
 pub fn accept_connections(port: u16, store_path: &str) {
@@ -69,9 +71,24 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream, store: &ObjectStore) -
     let length = match request_body_length(&request) {
         Ok(length) => length,
         Err((status, message)) => {
+            if request.target() == "/objects/batch" {
+                return write_batch_error(&mut writer, status, message);
+            }
             return write_response(&mut writer, status, message.as_bytes(), "text/plain");
         }
     };
+
+    // /objects/batch must be checked before the /objects/{oid} prefix route.
+    if request.target() == "/objects/batch" {
+        return handle_batch_request(
+            &request,
+            length,
+            &mut reader,
+            &mut writer,
+            store,
+            stream.local_addr()?,
+        );
+    }
 
     // Basic object transfer routes are already useful without the batch API.
     // PUT must bypass the in-memory body parser so large files can be stored.
@@ -132,6 +149,75 @@ fn read_body(
     // read_exact consumes precisely this request's body, including non-UTF-8
     // bytes. A short body is reported as a malformed request.
     Body::parse(reader, length).map_err(|_| (StatusCode::BadRequest, "Incomplete request body"))
+}
+
+fn handle_batch_request(
+    request: &Request,
+    length: usize,
+    reader: &mut BufReader<&TcpStream>,
+    writer: &mut BufWriter<&TcpStream>,
+    store: &ObjectStore,
+    local_addr: SocketAddr,
+) -> io::Result<()> {
+    if request.method() != &Method::POST {
+        return write_batch_error(
+            writer,
+            StatusCode::MethodNotAllowed,
+            "Batch requests must use POST",
+        );
+    }
+
+    // The Batch API uses a vendor JSON media type. A charset parameter on
+    // Content-Type is allowed, and Accept can contain a list of media types.
+    let content_types = request.header_values("Content-Type");
+    if content_types.len() != 1 || !is_lfs_json(content_types[0]) {
+        return write_batch_error(
+            writer,
+            StatusCode::UnsupportedMediaType,
+            "Expected Git LFS JSON content type",
+        );
+    }
+    let accepts = request.header_values("Accept");
+    if !accepts
+        .iter()
+        .any(|value| value.split(',').any(is_lfs_json))
+    {
+        return write_batch_error(
+            writer,
+            StatusCode::NotAcceptable,
+            "Git LFS JSON must be accepted",
+        );
+    }
+
+    let body = match read_body(length, reader) {
+        Ok(body) => body,
+        Err((status, message)) => return write_batch_error(writer, status, message),
+    };
+    // This listener is loopback-only; action URLs use its actual local port
+    // instead of trusting a client-supplied Host header.
+    let base_url = format!("http://{}", local_addr);
+    match batch::process(&body.into_bytes(), store, &base_url) {
+        Ok(response) => write_response(writer, StatusCode::Ok, &response, LFS_JSON),
+        Err(error) => write_batch_error(writer, error.status, error.message),
+    }
+}
+
+fn is_lfs_json(value: &str) -> bool {
+    value
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .eq_ignore_ascii_case(LFS_JSON)
+}
+
+fn write_batch_error(
+    writer: &mut BufWriter<&TcpStream>,
+    status: StatusCode,
+    message: &str,
+) -> io::Result<()> {
+    let body = batch::error_body(message);
+    write_response(writer, status, &body, LFS_JSON)
 }
 
 fn handle_object_request(
@@ -204,8 +290,8 @@ fn write_store_error(writer: &mut BufWriter<&TcpStream>, error: StoreError) -> i
     write_response(writer, status, message.as_bytes(), "text/plain")
 }
 
-// These prototype routes exercise framing and binary responses. The object
-// transfer routes are handled above; batch negotiation comes later.
+// These prototype routes exercise framing and binary responses. The Git LFS
+// batch and object transfer routes are handled above.
 fn route(request: &Request, body: Body) -> (StatusCode, Vec<u8>, &'static str) {
     match (request.method(), request.target()) {
         (&Method::GET, "/") => (StatusCode::Ok, b"hello world".to_vec(), "text/plain"),
@@ -285,6 +371,12 @@ mod tests {
             let (stream, peer) = listener.accept().unwrap();
             handle_connection(peer, stream, &store).unwrap();
         });
+        let response = exchange_at(addr, request);
+        server.join().unwrap();
+        response
+    }
+
+    fn exchange_at(addr: SocketAddr, request: &[u8]) -> Vec<u8> {
         let mut client = TcpStream::connect(addr).unwrap();
         client.write_all(request).unwrap();
         // Half-close the request side so a deliberately short body produces
@@ -292,7 +384,6 @@ mod tests {
         client.shutdown(Shutdown::Write).unwrap();
         let mut response = Vec::new();
         client.read_to_end(&mut response).unwrap();
-        server.join().unwrap();
         response
     }
 
@@ -307,6 +398,17 @@ mod tests {
             .position(|part| part == b"\r\n\r\n")
             .unwrap();
         (&response[..boundary], &response[boundary + 4..])
+    }
+
+    fn batch_request(json: &str) -> Vec<u8> {
+        format!(
+            "POST /objects/batch HTTP/1.1\r\nAccept: {}\r\nContent-Type: {}; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+            LFS_JSON,
+            LFS_JSON,
+            json.len(),
+            json
+        )
+        .into_bytes()
     }
 
     #[test]
@@ -429,5 +531,129 @@ mod tests {
         );
         let response = exchange_in_store(short.as_bytes(), &directory.0);
         assert!(response.starts_with(b"HTTP/1.1 422 Unprocessable Entity\r\n"));
+    }
+
+    #[test]
+    fn batch_actions_complete_basic_upload_and_download() {
+        let directory = TestDirectory::new();
+        let store = ObjectStore::new(&directory.0).unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            // Keep one test listener alive so every advertised action URL can
+            // be used against the same server and object store.
+            for _ in 0..5 {
+                let (stream, peer) = listener.accept().unwrap();
+                handle_connection(peer, stream, &store).unwrap();
+            }
+        });
+
+        let bytes = b"a Git LFS object\x00\xff";
+        let oid = hex::encode(Sha256::digest(bytes));
+        let claim = format!(
+            r#"{{"operation":"upload","objects":[{{"oid":"{}","size":{}}}]}}"#,
+            oid,
+            bytes.len()
+        );
+        let response = exchange_at(addr, &batch_request(&claim));
+        let (head, body) = response_parts(&response);
+        assert!(head.starts_with(b"HTTP/1.1 200 OK\r\n"));
+        assert!(head
+            .windows(LFS_JSON.len())
+            .any(|part| part == LFS_JSON.as_bytes()));
+        let json: serde_json::Value = serde_json::from_slice(body).unwrap();
+        assert_eq!(json["transfer"], "basic");
+        assert_eq!(json["hash_algo"], "sha256");
+        assert_eq!(json["objects"][0]["oid"], oid);
+        assert_eq!(json["objects"][0]["size"], bytes.len());
+        let upload_href = json["objects"][0]["actions"]["upload"]["href"]
+            .as_str()
+            .unwrap();
+        let base = format!("http://{}", addr);
+        let upload_path = upload_href.strip_prefix(&base).unwrap();
+        assert_eq!(upload_path, format!("/objects/{}", oid));
+
+        let mut upload = format!(
+            "PUT {} HTTP/1.1\r\nContent-Length: {}\r\n\r\n",
+            upload_path,
+            bytes.len()
+        )
+        .into_bytes();
+        upload.extend_from_slice(bytes);
+        let response = exchange_at(addr, &upload);
+        assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+
+        // A second upload batch omits actions because the object already exists.
+        let response = exchange_at(addr, &batch_request(&claim));
+        let (_, body) = response_parts(&response);
+        let json: serde_json::Value = serde_json::from_slice(body).unwrap();
+        assert!(json["objects"][0].get("actions").is_none());
+
+        let claim = format!(
+            r#"{{"operation":"download","transfers":["basic"],"objects":[{{"oid":"{}","size":{}}}]}}"#,
+            oid,
+            bytes.len()
+        );
+        let response = exchange_at(addr, &batch_request(&claim));
+        let (_, body) = response_parts(&response);
+        let json: serde_json::Value = serde_json::from_slice(body).unwrap();
+        let download_href = json["objects"][0]["actions"]["download"]["href"]
+            .as_str()
+            .unwrap();
+        let download_path = download_href.strip_prefix(&base).unwrap();
+        assert_eq!(download_path, upload_path);
+
+        let download = format!("GET {} HTTP/1.1\r\n\r\n", download_path);
+        let response = exchange_at(addr, download.as_bytes());
+        let (_, body) = response_parts(&response);
+        assert_eq!(body, bytes);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn batch_reports_object_and_request_errors_as_json() {
+        let directory = TestDirectory::new();
+        let oid = hex::encode(Sha256::digest(b"missing"));
+        let claim = format!(
+            r#"{{"operation":"download","objects":[{{"oid":"{}","size":7}},{{"oid":"bad","size":1}}]}}"#,
+            oid
+        );
+        let response = exchange_in_store(&batch_request(&claim), &directory.0);
+        let (head, body) = response_parts(&response);
+        assert!(head.starts_with(b"HTTP/1.1 200 OK\r\n"));
+        let json: serde_json::Value = serde_json::from_slice(body).unwrap();
+        assert_eq!(json["objects"][0]["error"]["code"], 404);
+        assert_eq!(json["objects"][1]["error"]["code"], 422);
+
+        let bad_cases: &[(&str, &[u8])] = &[
+            (
+                r#"{"operation":"nonsense","objects":[]}"#,
+                b"HTTP/1.1 400 Bad Request",
+            ),
+            (
+                r#"{"operation":"download","transfers":["other"],"objects":[]}"#,
+                b"HTTP/1.1 422 Unprocessable Entity",
+            ),
+            (
+                r#"{"operation":"download","hash_algo":"sha1","objects":[]}"#,
+                b"HTTP/1.1 409 Conflict",
+            ),
+            ("not JSON", b"HTTP/1.1 400 Bad Request"),
+        ];
+        for &(json, status) in bad_cases {
+            let response = exchange_in_store(&batch_request(json), &directory.0);
+            let (head, body) = response_parts(&response);
+            assert!(head.starts_with(status));
+            assert!(head
+                .windows(LFS_JSON.len())
+                .any(|part| part == LFS_JSON.as_bytes()));
+            let json: serde_json::Value = serde_json::from_slice(body).unwrap();
+            assert!(json["message"].as_str().is_some());
+            assert!(json.get("objects").is_none());
+        }
+
+        let wrong_type = b"POST /objects/batch HTTP/1.1\r\nAccept: application/vnd.git-lfs+json\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\n{}";
+        let response = exchange_in_store(wrong_type, &directory.0);
+        assert!(response.starts_with(b"HTTP/1.1 415 Unsupported Media Type\r\n"));
     }
 }

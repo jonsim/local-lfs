@@ -54,9 +54,9 @@ Still in development, not ready for external use.
 
 ### Current Status
 
-The project can store and transfer raw objects over HTTP, but is not yet a
-usable Git LFS server. A Git LFS client still cannot negotiate transfers because
-the batch API is missing.
+The project now implements Git LFS batch negotiation and basic HTTP object
+transfers against a persistent local store. The protocol flow is covered by
+loopback tests, but a real Git LFS client push and fetch has not yet been tested.
 
 Implemented:
 
@@ -76,19 +76,21 @@ Implemented:
   checks its `Content-Length` and SHA-256 ID, then publishes it. `GET
   /objects/{oid}` streams the stored bytes back. Invalid or incomplete uploads
   leave no published object.
+- `POST /objects/batch` accepts Git LFS JSON for upload and download requests,
+  selects the basic transfer adapter, and returns action URLs for missing
+  uploads or available downloads. Already stored uploads need no action;
+  missing downloads and invalid object claims produce per-object errors.
 
 Still missing:
 
-- Batch negotiation and optional verification endpoints are absent, so standard
-  Git LFS client push and fetch workflows do not work yet.
+- A real Git LFS client push and fetch workflow still needs an end-to-end
+  system test. Optional verification actions are not implemented.
 - Objects are stored as raw bytes. Compression and cloud-backed storage are not
   implemented.
 - The handler still processes connections sequentially and holds request bodies
   for non-object routes in memory, with a temporary 16 MiB limit. Object
   transfers stream, but chunked transfer encoding and `Expect` requests are
   not supported.
-- End-to-end tests need to exercise Git LFS client workflows beyond the
-  current CLI smoke test and HTTP loopback tests.
 
 
 
