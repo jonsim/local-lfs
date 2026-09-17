@@ -61,15 +61,15 @@ repos:
         pass_filenames: false
         files: \.(robot|resource)$
       # Keep the Python system-test fixture formatted and free of lint errors.
-      - id: ruff-check
-        name: python lint
-        entry: uv run --frozen ruff check --fix test
-        language: system
-        pass_filenames: false
-        files: ^test/.*\.py$
       - id: ruff-format
         name: python format
         entry: uv run --frozen ruff format test
+        language: system
+        pass_filenames: false
+        files: ^test/.*\.py$
+      - id: ruff-check
+        name: python lint
+        entry: uv run --frozen ruff check test
         language: system
         pass_filenames: false
         files: ^test/.*\.py$

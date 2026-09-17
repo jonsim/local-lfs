@@ -1,4 +1,4 @@
-//! Small, single-connection-at-a-time HTTP server prototype.
+//! Small loopback HTTP server with a bounded number of active connections.
 //! The request handler is kept separate from the accept loop so a bad client
 //! can receive an error response without bringing down the listener.
 mod batch;
@@ -9,12 +9,16 @@ use self::http::{Body, Field, MessageBuilder, Method, Request, StatusCode};
 use self::store::{ObjectStore, StoreError};
 use std::io::{self, BufReader, BufWriter, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 
 // Ordinary prototype routes hold the body in memory, so they need a ceiling.
 // PUT /objects streams directly to a temporary file and does not use this cap.
 const MAX_BODY_BYTES: usize = 16 * 1024 * 1024;
 const LFS_JSON: &str = "application/vnd.git-lfs+json";
+const WORKERS: usize = 4;
+const QUEUED_CONNECTIONS: usize = 16;
 
 /// Listen on loopback and keep accepting clients after a connection fails.
 pub fn accept_connections(port: u16, store_path: &str) {
@@ -25,19 +29,30 @@ pub fn accept_connections(port: u16, store_path: &str) {
         .unwrap_or_else(|error| panic!("Failed to bind to {}: {}", listen_addr, error));
 
     println!("Listening on {}", listen_addr);
-    // For now, each connection is handled before the next one is accepted.
+    // A bounded queue and fixed workers keep a stalled upload from delaying
+    // every other client without creating a thread for every incoming socket.
+    let (sender, receiver) = mpsc::sync_channel(QUEUED_CONNECTIONS);
+    let receiver = Arc::new(Mutex::new(receiver));
+    let store = Arc::new(store);
+    for _ in 0..WORKERS {
+        let receiver = Arc::clone(&receiver);
+        let store = Arc::clone(&store);
+        thread::spawn(move || loop {
+            // Hold the receiver lock only while taking the next socket; each
+            // worker then processes its request independently.
+            let connection = receiver.lock().expect("connection queue poisoned").recv();
+            match connection {
+                Ok(stream) => serve_connection(stream, &store),
+                Err(_) => break,
+            }
+        });
+    }
     for connection in listener.incoming() {
         match connection {
             Ok(stream) => {
-                let addr = match stream.peer_addr() {
-                    Ok(addr) => addr,
-                    Err(error) => {
-                        eprintln!("Could not identify client: {}", error);
-                        continue;
-                    }
-                };
-                if let Err(error) = handle_connection(addr, stream, &store) {
-                    eprintln!("Client {}: {}", addr, error);
+                if sender.send(stream).is_err() {
+                    eprintln!("All connection workers have stopped");
+                    break;
                 }
             }
             Err(error) => eprintln!("Accept failed: {}", error),
@@ -45,11 +60,25 @@ pub fn accept_connections(port: u16, store_path: &str) {
     }
 }
 
+fn serve_connection(stream: TcpStream, store: &ObjectStore) {
+    let addr = match stream.peer_addr() {
+        Ok(addr) => addr,
+        Err(error) => {
+            eprintln!("Could not identify client: {}", error);
+            return;
+        }
+    };
+    if let Err(error) = handle_connection(addr, stream, store) {
+        eprintln!("Client {}: {}", addr, error);
+    }
+}
+
 fn handle_connection(addr: SocketAddr, stream: TcpStream, store: &ObjectStore) -> io::Result<()> {
     println!("New client: {}", addr);
-    // A client that stops sending mid-request must not block this sequential
-    // listener forever. Persistent connections are not supported yet.
+    // A client that stops sending mid-request must not occupy one worker
+    // forever. Persistent connections are not supported yet.
     stream.set_read_timeout(Some(Duration::from_secs(10)))?;
+    stream.set_write_timeout(Some(Duration::from_secs(10)))?;
     let mut reader = BufReader::new(&stream);
     let mut writer = BufWriter::new(&stream);
 
@@ -77,6 +106,38 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream, store: &ObjectStore) -
             return write_response(&mut writer, status, message.as_bytes(), "text/plain");
         }
     };
+    let expects_continue = match request_expect_continue(&request) {
+        Ok(value) => value,
+        Err((status, message)) => {
+            if request.target() == "/objects/batch" {
+                return write_batch_error(&mut writer, status, message);
+            }
+            return write_response(&mut writer, status, message.as_bytes(), "text/plain");
+        }
+    };
+    let streaming_upload =
+        request.method() == &Method::PUT && request.target().starts_with("/objects/");
+    if length > MAX_BODY_BYTES && !streaming_upload {
+        if request.target() == "/objects/batch" {
+            return write_batch_error(
+                &mut writer,
+                StatusCode::PayloadTooLarge,
+                "Request body is too large",
+            );
+        }
+        return write_response(
+            &mut writer,
+            StatusCode::PayloadTooLarge,
+            b"Request body is too large",
+            "text/plain",
+        );
+    }
+    if expects_continue {
+        // Send the interim response before reading bytes from a client that
+        // waits for permission to transmit its fixed-length request body.
+        writer.write_all(b"HTTP/1.1 100 Continue\r\n\r\n")?;
+        writer.flush()?;
+    }
 
     // /objects/batch must be checked before the /objects/{oid} prefix route.
     if request.target() == "/objects/batch" {
@@ -109,15 +170,12 @@ fn handle_connection(addr: SocketAddr, stream: TcpStream, store: &ObjectStore) -
 
 fn request_body_length(request: &Request) -> Result<usize, (StatusCode, &'static str)> {
     // The parser only understands a fixed byte count. Reject alternate
-    // framing and 100-continue expectations before waiting for body bytes.
+    // framing before waiting for body bytes.
     if !request.header_values("Transfer-Encoding").is_empty() {
         return Err((
             StatusCode::NotImplemented,
             "Transfer-Encoding is not supported",
         ));
-    }
-    if !request.header_values("Expect").is_empty() {
-        return Err((StatusCode::ExpectationFailed, "Expect is not supported"));
     }
 
     // Even equal duplicate lengths are rejected so there is only one clear
@@ -137,6 +195,20 @@ fn request_body_length(request: &Request) -> Result<usize, (StatusCode, &'static
         None => 0,
     };
     Ok(length)
+}
+
+fn request_expect_continue(request: &Request) -> Result<bool, (StatusCode, &'static str)> {
+    let expectations = request.header_values("Expect");
+    match expectations.as_slice() {
+        [] => Ok(false),
+        [value]
+            if (request.method() == &Method::POST || request.method() == &Method::PUT)
+                && value.trim().eq_ignore_ascii_case("100-continue") =>
+        {
+            Ok(true)
+        }
+        _ => Err((StatusCode::ExpectationFailed, "Unsupported Expect header")),
+    }
 }
 
 fn read_body(
@@ -443,6 +515,51 @@ mod tests {
     }
 
     #[test]
+    fn continues_a_waiting_object_upload() {
+        let directory = TestDirectory::new();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let store = ObjectStore::new(&directory.0).unwrap();
+        let server = thread::spawn(move || {
+            let (stream, peer) = listener.accept().unwrap();
+            handle_connection(peer, stream, &store).unwrap();
+        });
+
+        let bytes = b"wait for continue before uploading";
+        let oid = hex::encode(Sha256::digest(bytes));
+        let mut client = TcpStream::connect(addr).unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        client
+            .write_all(
+                format!(
+                    "PUT /objects/{} HTTP/1.1\r\nExpect: 100-continue\r\nContent-Length: {}\r\n\r\n",
+                    oid,
+                    bytes.len()
+                )
+                .as_bytes(),
+            )
+            .unwrap();
+        let mut interim = [0_u8; b"HTTP/1.1 100 Continue\r\n\r\n".len()];
+        client.read_exact(&mut interim).unwrap();
+        assert_eq!(&interim, b"HTTP/1.1 100 Continue\r\n\r\n");
+
+        client.write_all(bytes).unwrap();
+        client.shutdown(Shutdown::Write).unwrap();
+        let mut final_response = Vec::new();
+        client.read_to_end(&mut final_response).unwrap();
+        assert!(final_response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+        server.join().unwrap();
+
+        let store = ObjectStore::new(&directory.0).unwrap();
+        let (mut file, _) = store.open(&oid).unwrap();
+        let mut stored = Vec::new();
+        file.read_to_end(&mut stored).unwrap();
+        assert_eq!(stored, bytes);
+    }
+
+    #[test]
     fn rejects_bad_framing_without_panicking() {
         let cases: &[(&[u8], &[u8])] = &[
             (b"not an HTTP request\r\n\r\n", b"HTTP/1.1 400 Bad Request"),
@@ -465,6 +582,14 @@ mod tests {
             (
                 b"POST /echo HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n",
                 b"HTTP/1.1 501 Not Implemented",
+            ),
+            (
+                b"POST /echo HTTP/1.1\r\nExpect: unsupported\r\nContent-Length: 0\r\n\r\n",
+                b"HTTP/1.1 417 Expectation Failed",
+            ),
+            (
+                b"POST /echo HTTP/1.1\r\nExpect: 100-continue\r\nContent-Length: 16777217\r\n\r\n",
+                b"HTTP/1.1 413 Payload Too Large",
             ),
         ];
         for &(request, status) in cases {

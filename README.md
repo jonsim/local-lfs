@@ -65,12 +65,13 @@ Implemented:
 - HTTP building blocks parse and format request and response lines, headers,
   status codes, and fixed-length bodies. A message builder assembles requests
   and responses. The Rust suite includes unit tests and loopback TCP tests.
-- The live server accepts one connection at a time and routes `GET /` to a
+- The live server uses four connection workers and routes `GET /` to a
   `hello world` response and `POST /echo` to a binary echo response. It reads
   bodies using `Content-Length`, sends framed responses, and returns HTTP errors
   for bad requests, unsupported methods, and unknown paths. A client error no
-  longer stops the listener. The Robot suite checks the CLI help output and
-  the Git LFS push/fetch workflow below.
+  longer stops the listener. A bounded queue limits waiting sockets, and
+  `Expect: 100-continue` works for fixed-length uploads. The Robot suite checks
+  the CLI help output and the workflows below.
 - `--store` selects a persistent local object directory (default
   `./lfo-store`). `PUT /objects/{oid}` streams an upload to a temporary file,
   checks its `Content-Length` and SHA-256 ID, then publishes it. `GET
@@ -80,19 +81,21 @@ Implemented:
   selects the basic transfer adapter, and returns action URLs for missing
   uploads or available downloads. Already stored uploads need no action;
   missing downloads and invalid object claims produce per-object errors.
-- The system test creates a local bare Git remote, pushes an LFS-tracked binary
-  through Git's pre-push hook, then pulls it into a fresh clone and compares
-  the recovered bytes. It requires `git-lfs` on `PATH`.
+- The system test creates a local bare Git remote, pushes three LFS-tracked
+  binaries (including one over 16 MiB), restarts the server, then pulls into a
+  fresh clone and compares the recovered bytes. Another test checks that a
+  stalled upload does not delay another client, a wrong-hash upload publishes
+  nothing, and a `100 Continue` upload completes. The Git workflow requires
+  `git-lfs` on `PATH`.
 
 Still missing:
 
 - Optional verification actions are not implemented.
 - Objects are stored as raw bytes. Compression and cloud-backed storage are not
   implemented.
-- The handler still processes connections sequentially and holds request bodies
-  for non-object routes in memory, with a temporary 16 MiB limit. Object
-  transfers stream, but chunked transfer encoding and `Expect` requests are
-  not supported.
+- Non-object request bodies still have a temporary 16 MiB in-memory limit.
+  Object transfers stream, but chunked transfer encoding and persistent HTTP
+  connections are not supported.
 
 
 
@@ -137,10 +140,17 @@ Run the Rust unit tests:
 cargo test
 ```
 
-Run the CLI smoke and Git LFS push/fetch system tests:
+Run the CLI smoke, Git LFS push/fetch, and HTTP hardening system tests:
 
 ```sh
 uv run robot --outputdir target/robot test
+```
+
+Format and lint the Python system-test fixture:
+
+```sh
+uv run ruff format test
+uv run ruff check test
 ```
 
 ### Run the checks

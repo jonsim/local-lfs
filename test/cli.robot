@@ -18,8 +18,12 @@ Has Help Text
     Should Contain    ${result.stdout}    usage:
 
 Git LFS Push And Fetch
-    [Documentation]    Pushes an LFS object through the pre-push hook, then pulls it into a fresh clone.
+    [Documentation]    Pushes three LFS objects, restarts the server, then pulls them into a fresh clone.
     Git Lfs Push And Fetch
+
+Server Stays Responsive To Bad Clients
+    [Documentation]    Exercises stalled uploads, wrong hashes, and the Expect handshake.
+    Server Stays Responsive To Bad Clients
 
 
 *** Keywords ***
