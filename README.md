@@ -101,9 +101,10 @@ Still missing:
 
 ## Getting started
 
-Install a stable Rust toolchain, [uv](https://docs.astral.sh/uv/), and
-[`git-lfs`](https://git-lfs.com/). `rustup` will add the `rustfmt` and `clippy`
-components from `rust-toolchain.toml`.
+Install a stable Rust toolchain and [`git-lfs`](https://git-lfs.com/). Install
+[uv](https://docs.astral.sh/uv/) if you want to run the development checks.
+`rustup` will add the `rustfmt` and `clippy` components from
+`rust-toolchain.toml`.
 
 Install the development tools:
 
@@ -131,6 +132,56 @@ Or install and run the executable directly:
 cargo install --path .
 local-lfs
 ```
+
+### Use with a Git repository
+
+Run the server from this project directory and leave it running while you push
+or fetch LFS files. The store directory holds the object bytes and can be reused
+when the server restarts. This example uses the default loopback port and an
+ignored directory inside this checkout:
+
+```sh
+cargo run -- --port 9090 --store ./lfo-store
+```
+
+In another terminal, go to an existing Git repository with an `origin` remote.
+Configure Git LFS to send its object requests to this server, then track and
+commit a file. Replace `my-file.bin` with a file that exists in your repository;
+change the `*.bin` pattern if needed. Run `git lfs track` before adding the file.
+
+```sh
+git lfs install --local
+git config lfs.url http://127.0.0.1:9090
+git config lfs.locksverify false
+git lfs track "*.bin"
+git add .gitattributes my-file.bin
+git commit -m "Track binary file with Git LFS"
+git push origin HEAD
+```
+
+The Git remote receives the commit and LFS pointer; `./lfo-store` receives the
+file bytes. The local `lfs.url` setting stays in this repository's Git config.
+It is not committed with the project files. Lock checks are disabled because
+this server does not implement the Git LFS locks API. See the
+[Git LFS configuration reference](https://github.com/git-lfs/git-lfs/blob/main/docs/man/git-lfs-config.adoc)
+for these settings.
+
+To fetch into a fresh clone on the same computer, skip the automatic LFS
+download during clone so you can set the local endpoint first. Replace
+`YOUR_GIT_REMOTE_URL` with the URL or path of your Git remote:
+
+```sh
+GIT_LFS_SKIP_SMUDGE=1 git clone YOUR_GIT_REMOTE_URL new-checkout
+cd new-checkout
+git lfs install --local
+git config lfs.url http://127.0.0.1:9090
+git config lfs.locksverify false
+git lfs pull origin
+```
+
+The server listens only on `127.0.0.1`, so these commands must run on the same
+computer as `local-lfs`. Keep the same store directory when restarting it;
+the Git remote contains pointers rather than copies of the LFS file bytes.
 
 ### Run the tests
 
