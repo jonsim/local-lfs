@@ -97,6 +97,47 @@ Still missing:
   Object transfers stream, but chunked transfer encoding and persistent HTTP
   connections are not supported.
 
+## Remaining work
+
+The following is a suggested implementation order. The first three items make
+the local server dependable; the later ones work toward the original goal of
+compressed, cloud-backed LFS storage.
+
+1. **Protect stored objects.** Make publication safe when two clients upload
+   the same ID, avoid replacing an existing object, and ensure a completed
+   upload survives a crash. Clean up abandoned temporary files after a restart
+   and provide a way to audit stored sizes and SHA-256 hashes. Test concurrent
+   uploads, interrupted writes, and corrupted files before changing the storage
+   format.
+2. **Harden HTTP and transfer behavior.** Bound request headers and the time
+   sockets spend in the existing queue, handle slow readers and writers
+   predictably, and support a clean shutdown. Add load and failure tests with a
+   real Git LFS client. Implement chunked requests or persistent connections
+   when interoperability tests show they are needed; the current basic
+   push/fetch workflow works without them.
+3. **Make the local server easier to operate.** Replace CLI panics with useful
+   errors, add health and storage diagnostics, document backup and restore, and
+   run Rust, Robot, Ruff, and real-client tests in CI. Make limits and worker
+   counts configurable if the tests show the defaults are too restrictive.
+4. **Add transparent compression.** Define a versioned on-disk format and
+   stream compression on upload and decompression on download while keeping
+   Git LFS IDs and wire bytes based on the original, uncompressed content.
+   Measure the space and CPU tradeoffs, and provide a migration path for objects
+   already stored as raw bytes.
+5. **Add cloud-backed storage.** Put a storage interface behind the HTTP layer,
+   add a cloud backend with retries and a local cache, and test outages and
+   delayed availability. Add the optional [batch verification action](https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md)
+   if uploads need a separate confirmation step.
+6. **Support clients beyond one computer.** Add authenticated access, TLS, and
+   controlled bind-address configuration before allowing non-loopback traffic.
+   Test push and fetch from another machine and decide how repositories share
+   or isolate the object store.
+7. **Add other Git LFS features as needed.** Implement the
+   [locking API](https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md)
+   if multiple users need lock-aware pushes. Consider resumable transfers and
+   other adapters only after the basic flow, storage, and access controls are
+   reliable.
+
 
 
 ## Getting started
